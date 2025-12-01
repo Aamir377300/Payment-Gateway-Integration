@@ -16,8 +16,22 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+
+    # Admin Panel
+    path('admin/', admin.site.urls),
+
+    # Landing Page Route
+    path('', include('payment_gateway.core_urls')),
+
+    # Accounts App
+    path('accounts/', include('accounts.urls')),
+
+    # Payments App
+    path('payments/', include('payments.urls')),
+
+    # Dashboard App
+    path('dashboard/', include('dashboard.urls')),
 ]

@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - PayGate{% endblock %}
+
+{% block content %}
+<section class="dashboard-section">
+    <div class="container">
+        <div class="dashboard-header">
+            <div>
+                <h1>Welcome, {{ user.first_name|default:user.username }}!</h1>
+                <p>Manage your payments and transactions</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <div class="card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <path d="M16 8L22 14L16 20L10 14L16 8Z" fill="white"/>
+                    </svg>
+                </div>
+                <h3>Total Transactions</h3>
+                <p class="card-value">0</p>
+                <p class="card-label">No transactions yet</p>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h3>Successful Payments</h3>
+                <p class="card-value">₹0</p>
+                <p class="card-label">Total amount received</p>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <circle cx="16" cy="16" r="6" stroke="white" stroke-width="2"/>
+                    </svg>
+                </div>
+                <h3>Pending</h3>
+                <p class="card-value">0</p>
+                <p class="card-label">Awaiting confirmation</p>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="content-card">
+                <h2>Recent Transactions</h2>
+                <div class="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                        <circle cx="32" cy="32" r="30" stroke="#e5e7eb" stroke-width="2"/>
+                        <path d="M32 20V32L40 40" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <p>No transactions yet</p>
+                    <a href="{% url 'create_order' %}" class="btn btn-primary">Make a Payment</a>
+                    <a href="{% url 'transaction_history' %}" class="btn btn-secondary" style="margin-left: 10px;">View History</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.dashboard-section {
+    padding: 60px 0;
+    min-height: calc(100vh - 80px);
+}
+
+.dashboard-header {
+    margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--dark);
+    margin-bottom: 8px;
+}
+
+.dashboard-header p {
+    color: var(--gray-600);
+    font-size: 16px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.dashboard-card {
+    background: var(--white);
+    padding: 32px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+
+.card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.dashboard-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--dark);
+    margin-bottom: 4px;
+}
+
+.card-label {
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.dashboard-content {
+    display: grid;
+    gap: 24px;
+}
+
+.content-card {
+    background: var(--white);
+    padding: 32px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+
+.content-card h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 24px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-state svg {
+    margin-bottom: 20px;
+}
+
+.empty-state p {
+    color: var(--gray-600);
+    font-size: 16px;
+    margin-bottom: 24px;
+}
+</style>
+{% endblock %}

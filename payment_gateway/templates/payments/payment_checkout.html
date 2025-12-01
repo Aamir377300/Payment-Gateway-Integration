@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin: 50px auto; text-align: center;">
+    <div class="checkout-card">
+        <h2>🔒 Secure Checkout</h2>
+        <p>Amount: <strong>₹{{ amount }}</strong></p>
+        <p>{{ description }}</p>
+        
+        <button id="rzp-button" class="btn btn-success btn-lg">
+            Pay ₹{{ amount }} with Razorpay
+        </button>
+        
+        <p style="margin-top: 20px; color: #666; font-size: 14px;">
+            🔐 Secured by Razorpay | Test Mode
+        </p>
+    </div>
+</div>
+
+<form id="payment-form" action="{% url 'verify_payment' %}" method="POST" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
+    <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+    <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+</form>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    var options = {
+        "key": "{{ razorpay_key_id }}",
+        "amount": "{{ amount_in_paise }}",
+        "currency": "{{ currency }}",
+        "name": "Payment Gateway Demo",
+        "description": "{{ description }}",
+        "order_id": "{{ razorpay_order_id }}",
+        "handler": function (response) {
+            // Payment successful - submit form with payment details
+            document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+            document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+            document.getElementById('razorpay_signature').value = response.razorpay_signature;
+            document.getElementById('payment-form').submit();
+        },
+        "prefill": {
+            "name": "{{ user_name }}",
+            "email": "{{ user_email }}"
+        },
+        "theme": {
+            "color": "#667eea"
+        },
+        "modal": {
+            "ondismiss": function() {
+                // Payment cancelled
+                window.location.href = "{% url 'payment_failure' transaction_id %}";
+            }
+        }
+    };
+    
+    var rzp = new Razorpay(options);
+    
+    document.getElementById('rzp-button').onclick = function(e) {
+        rzp.open();
+        e.preventDefault();
+    }
+</script>
+
+<style>
+    .checkout-card {
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn-success {
+        background: #28a745;
+        color: white;
+        padding: 15px 40px;
+        font-size: 18px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-success:hover {
+        background: #218838;
+    }
+</style>
+{% endblock %}

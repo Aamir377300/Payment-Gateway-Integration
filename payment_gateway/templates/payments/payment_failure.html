@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Failed{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin: 50px auto; text-align: center;">
+    <div class="failure-card">
+        <div class="failure-icon">❌</div>
+        <h1>Payment Failed</h1>
+        <p>Unfortunately, your payment could not be processed.</p>
+        
+        <div class="transaction-details">
+            <h3>Transaction Details</h3>
+            <table>
+                <tr>
+                    <td>Order ID:</td>
+                    <td><strong>{{ transaction.order_id }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Amount:</td>
+                    <td><strong>₹{{ transaction.amount }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Status:</td>
+                    <td><span class="badge badge-danger">{{ transaction.status }}</span></td>
+                </tr>
+                <tr>
+                    <td>Date:</td>
+                    <td>{{ transaction.created_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <a href="{% url 'create_order' %}" class="btn btn-primary">Try Again</a>
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .failure-card {
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .failure-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+    }
+    .transaction-details {
+        margin: 30px 0;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    .transaction-details table {
+        width: 100%;
+        margin-top: 15px;
+    }
+    .transaction-details td {
+        padding: 10px;
+        text-align: left;
+    }
+    .transaction-details td:first-child {
+        color: #666;
+    }
+    .badge-danger {
+        background: #dc3545;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .btn {
+        padding: 12px 24px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+</style>
+{% endblock %}
