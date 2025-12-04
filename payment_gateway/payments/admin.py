@@ -9,7 +9,6 @@ class TransactionAdmin(admin.ModelAdmin):
     search_fields = ['order_id', 'razorpay_order_id', 'razorpay_payment_id', 'user__email']
     readonly_fields = ['created_at', 'updated_at']
     date_hierarchy = 'created_at'
-    
     fieldsets = (
         ('Transaction Info', {
             'fields': ('user', 'order_id', 'amount', 'currency', 'status', 'description')

@@ -1,68 +1,82 @@
-from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.models import User
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+# it converts a Django User model object into a JSON-friendly Python dictionary that can be sent to the frontend (React). 
+def serialize_user(user):
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+    }
 
 
-def signup_view(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
-    
-    if request.method == 'POST':
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        email = request.POST.get('email')
-        password1 = request.POST.get('password1')
-        password2 = request.POST.get('password2')
-        
-        # Validation
-        if password1 != password2:
-            messages.error(request, 'Passwords do not match')
-            return render(request, 'signup.html')
-        
-        if User.objects.filter(email=email).exists():
-            messages.error(request, 'Email already registered')
-            return render(request, 'signup.html')
-        
-        # Create user with email as username
-        user = User.objects.create_user(
-            username=email,  # Use email as username
-            email=email,
-            password=password1,
-            first_name=first_name,
-            last_name=last_name
-        )
-        
-        messages.success(request, 'Account created successfully! Please login.')
-        return redirect('login')
-    
-    return render(request, 'signup.html')
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def signup_api(request):
+    data = request.data
+
+    first = data.get("first_name", "").strip()
+    last = data.get("last_name", "").strip()
+    email = data.get("email", "").strip()
+    p1 = data.get("password1")
+    p2 = data.get("password2")
+
+    if not all([first, last, email, p1, p2]):
+        return Response({"error": "All fields are required."}, status=400)
+
+    if p1 != p2:
+        return Response({"error": "Passwords do not match."}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({"error": "Email already registered."}, status=400)
+
+    user = User.objects.create_user(
+        username=email,
+        email=email,
+        password=p1,
+        first_name=first,
+        last_name=last,
+    )
+
+    return Response(
+        {"message": "Account created.", "user": serialize_user(user)},
+        status=status.HTTP_201_CREATED,
+    )
 
 
-def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
-    
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        
-        # Authenticate using email as username
-        user = authenticate(request, username=email, password=password)
-        
-        if user is not None:
-            login(request, user)
-            messages.success(request, f'Welcome back, {user.first_name or user.email}!')
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Invalid email or password')
-    
-    return render(request, 'login.html')
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def login_api(request):
+    email = request.data.get("email", "").strip()
+    password = request.data.get("password")
+
+    if not email or not password:
+        return Response({"error": "Email and password required."}, status=400)
+
+    user = authenticate(request, username=email, password=password)
+
+    if not user:
+        return Response({"error": "Invalid email or password."}, status=401)
+
+    login(request, user)
+    return Response({"message": "Login successful.", "user": serialize_user(user)})
 
 
-@login_required
-def logout_view(request):
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout_api(request):
     logout(request)
-    messages.success(request, 'You have been logged out successfully')
-    return redirect('landing')
+    return Response({"message": "Logged out."})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def current_user_api(request):
+    return Response(serialize_user(request.user))
