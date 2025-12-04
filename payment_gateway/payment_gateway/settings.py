@@ -93,10 +93,12 @@ RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 
 # CSRF Settings
-CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = True  # Required for SameSite=None
 CSRF_USE_SESSIONS = False
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,
     'http://localhost:5173',
@@ -105,6 +107,11 @@ CSRF_TRUSTED_ORIGINS = [
     'https://payment-gateway-integration-371z.onrender.com',
     'https://payment-gateway-integration-ni9i4kmro.vercel.app',
 ]
+
+# Session Settings for cross-origin
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [

@@ -12,7 +12,25 @@ const getCSRFToken = () => {
   return csrfCookie ? csrfCookie.split('=')[1] : null;
 };
 
-api.interceptors.request.use(config => {
+// Fetch CSRF token on app initialization
+let csrfInitialized = false;
+export const initializeCSRF = async () => {
+  if (!csrfInitialized) {
+    try {
+      await api.get('/csrf/');
+      csrfInitialized = true;
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+    }
+  }
+};
+
+api.interceptors.request.use(async config => {
+  // Ensure CSRF token is fetched before first request
+  if (!csrfInitialized) {
+    await initializeCSRF();
+  }
+  
   const token = getCSRFToken();
   if (token) config.headers['X-CSRFToken'] = token;
   return config;

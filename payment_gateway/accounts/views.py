@@ -80,3 +80,11 @@ def logout_api(request):
 @permission_classes([IsAuthenticated])
 def current_user_api(request):
     return Response(serialize_user(request.user))
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def csrf_token_api(request):
+    """Endpoint to get CSRF token for cross-origin requests"""
+    from django.middleware.csrf import get_token
+    return Response({"csrfToken": get_token(request)})
