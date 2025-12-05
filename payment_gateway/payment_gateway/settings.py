@@ -100,7 +100,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# STATIC (minimal - no files served)
 STATIC_URL = "static/"
 
 # LOGIN SETTINGS
@@ -117,7 +116,7 @@ RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 # FRONTEND URL
 FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 
-# 🔐 CSRF CONFIGURATION
+# CSRF CONFIGURATION
 CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
@@ -134,23 +133,24 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.razorpay.com',
     'https://payment-gateway-integration-371z.onrender.com',
     'https://payment-gateway-integration-zeta.vercel.app',
+    'https://payment-gateway-integration-92s8bqcay.vercel.app',
 ]
 
-# SESSION CONFIG (Fix Vercel and Django cookie issues)
+# SESSION CONFIG 
 
 SESSION_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 
-# ============================
-# 🌍 CORS CONFIGURATION
-# ============================
+# CORS CONFIGURATION
+
 
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://payment-gateway-integration-zeta.vercel.app",
+    "https://payment-gateway-integration-92s8bqcay.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
