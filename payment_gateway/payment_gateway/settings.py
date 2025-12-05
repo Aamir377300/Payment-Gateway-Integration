@@ -61,6 +61,9 @@ INSTALLED_APPS = [
 # -----------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    
+    # WhiteNoise for static files (must be after SecurityMiddleware)
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 
     # IMPORTANT: CORS before SessionMiddleware
     "corsheaders.middleware.CorsMiddleware",
@@ -141,7 +144,18 @@ USE_TZ = True
 # -----------------------------------------------------
 # Static files
 # -----------------------------------------------------
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# WhiteNoise configuration for efficient static file serving
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -167,7 +181,7 @@ CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_NAME = "csrftoken"
-CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+CSRF_HEADER_NAME = "X-CSRFToken"
 CSRF_COOKIE_DOMAIN = None
 
 CSRF_TRUSTED_ORIGINS = [
