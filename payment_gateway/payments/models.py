@@ -18,12 +18,12 @@ class Transaction(models.Model):
     currency = models.CharField(max_length=3, default="INR")
     status = models.CharField(max_length=20, choices=STATUS, default="PENDING")
 
-    razorpay_order_id = models.CharField(max_length=100, blank=True)
-    razorpay_payment_id = models.CharField(max_length=100, blank=True)
-    razorpay_signature = models.CharField(max_length=255, blank=True)
+    razorpay_order_id = models.CharField(max_length=100, blank=True, default='')
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, default='')
+    razorpay_signature = models.CharField(max_length=255, blank=True, default='')
 
-    description = models.TextField(blank=True)
-    receipt = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True, default='')
+    receipt = models.CharField(max_length=100, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,7 +49,7 @@ class PaymentLog(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True, blank=True)
     event_type = models.CharField(max_length=50, choices=EVENT)
     payload = models.JSONField(blank=True, null=True)
-    message = models.TextField(blank=True)
+    message = models.TextField(blank=True, default='')
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
