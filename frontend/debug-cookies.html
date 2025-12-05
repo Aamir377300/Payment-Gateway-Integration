@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie & CORS Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            color: #d32f2f;
+        }
+        .success {
+            color: #388e3c;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Cookie & CORS Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Configuration</h2>
+        <label>Backend URL:</label>
+        <input type="text" id="backendUrl" value="https://payment-gateway-integration-371z.onrender.com/api" style="width: 100%; padding: 8px; margin: 10px 0;">
+    </div>
+
+    <div class="section">
+        <h2>Tests</h2>
+        <button onclick="testCSRF()">1. Test CSRF Endpoint</button>
+        <button onclick="testUser()">2. Test User Endpoint</button>
+        <button onclick="showCookies()">3. Show All Cookies</button>
+        <button onclick="clearCookies()">4. Clear Cookies</button>
+    </div>
+
+    <div class="section">
+        <h2>Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            results.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testCSRF() {
+            clearResults();
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            log('🔄 Testing CSRF endpoint...');
+            
+            try {
+                const response = await fetch(`${backendUrl}/csrf/`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`Response: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                // Check cookies
+                const cookies = document.cookie;
+                log(`Cookies after request: ${cookies || 'No cookies found'}`);
+                
+                if (response.ok) {
+                    log('✅ CSRF endpoint working!', 'success');
+                } else {
+                    log('❌ CSRF endpoint failed', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUser() {
+            clearResults();
+            const backendUrl = document.getElementById('backendUrl').value;
+            
+            log('🔄 Testing user endpoint...');
+            
+            // Get CSRF token from cookies
+            const csrfToken = getCookie('csrftoken');
+            log(`CSRF Token: ${csrfToken || 'Not found'}`);
+            
+            try {
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+                
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+                
+                const response = await fetch(`${backendUrl}/auth/user/`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: headers
+                });
+
+                log(`Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                log(`Response: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                if (response.status === 401) {
+                    log('ℹ️ Not authenticated (expected if not logged in)', 'info');
+                } else if (response.ok) {
+                    log('✅ User endpoint working!', 'success');
+                } else if (response.status === 403) {
+                    log('❌ 403 Forbidden - CORS or CSRF issue', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showCookies() {
+            clearResults();
+            log('🍪 Current Cookies:');
+            
+            const cookies = document.cookie.split(';');
+            if (cookies.length === 0 || (cookies.length === 1 && cookies[0] === '')) {
+                log('No cookies found', 'error');
+            } else {
+                cookies.forEach(cookie => {
+                    log(`  ${cookie.trim()}`);
+                });
+            }
+            
+            log('\n📋 Cookie Details:');
+            log(`Total cookies: ${cookies.length}`);
+            log(`Has csrftoken: ${getCookie('csrftoken') ? '✅' : '❌'}`);
+            log(`Has sessionid: ${getCookie('sessionid') ? '✅' : '❌'}`);
+        }
+
+        function clearCookies() {
+            clearResults();
+            const cookies = document.cookie.split(';');
+            
+            cookies.forEach(cookie => {
+                const name = cookie.split('=')[0].trim();
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            });
+            
+            log('🗑️ Cookies cleared!', 'success');
+            log('Note: Some cookies may not be clearable from JavaScript due to HttpOnly flag');
+        }
+
+        function getCookie(name) {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [key, value] = cookie.trim().split('=');
+                if (key === name) return value;
+            }
+            return null;
+        }
+    </script>
+</body>
+</html>
