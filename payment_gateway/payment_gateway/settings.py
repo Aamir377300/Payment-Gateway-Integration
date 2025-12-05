@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
@@ -67,16 +68,29 @@ TEMPLATES = [
 WSGI_APPLICATION = "payment_gateway.wsgi.application"
 
 # DATABASE (PostgreSQL)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv('DB_NAME', 'payment_gateway_db'),
-        "USER": os.getenv('DB_USER', 'postgres'),
-        "PASSWORD": os.getenv('DB_PASSWORD', ''),
-        "HOST": os.getenv('DB_HOST', 'localhost'),
-        "PORT": os.getenv('DB_PORT', '5432'),
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Render deployment
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=False  # Render free Postgres does not require SSL
+        )
     }
-}
+else:
+    # Local development
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv('DB_NAME'),
+            "USER": os.getenv('DB_USER'),
+            "PASSWORD": os.getenv('DB_PASSWORD'),
+            "HOST": os.getenv('DB_HOST', 'localhost'),
+            "PORT": os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = []
 
@@ -86,9 +100,8 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# STATIC
+# STATIC (minimal - no files served)
 STATIC_URL = "static/"
-STATICFILES_DIRS = []  # Keep empty for backend API-only project
 
 # LOGIN SETTINGS
 LOGIN_URL = 'login'
@@ -104,13 +117,9 @@ RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 # FRONTEND URL
 FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 
-# ============================
 # 🔐 CSRF CONFIGURATION
-# ============================
-
-# Must be None + Secure=True for cross-site cookies
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 
@@ -127,12 +136,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://payment-gateway-integration-ni9i4kmro.vercel.app',
 ]
 
-# ============================
-# 🔐 SESSION CONFIG (Fix Vercel + Django cookie issues)
-# ============================
+# SESSION CONFIG (Fix Vercel and Django cookie issues)
 
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'None' if not DEBUG else 'Lax'
+SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 
 # ============================
@@ -152,8 +159,5 @@ CORS_ALLOW_CREDENTIALS = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
     ],
 }
