@@ -1,16 +1,9 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# Exit on error
+set -o errexit
 
-echo "Installing dependencies..."
+# 1. Install dependencies
 pip install -r requirements.txt
 
-echo "Collecting static files..."
-python manage.py collectstatic --noinput --clear
-
-echo "Running migrations..."
-python manage.py migrate --noinput
-
-echo "Creating superuser if needed..."
-python scripts/create_admin.py
-
-echo "Build completed successfully!"
+# 2. Collect static files
+python manage.py collectstatic --no-input
