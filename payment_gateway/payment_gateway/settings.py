@@ -50,6 +50,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware", # <--- CRITICAL FOR RENDER STATIC FILES
+    "payment_gateway.middleware.RequestLoggingMiddleware",  # Debug logging
+    "payment_gateway.middleware.CORSDebugMiddleware",  # CORS debug logging
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -138,6 +140,53 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # ============================
+# 📝 LOGGING CONFIGURATION
+# ============================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {name} - {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'payment_gateway': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'accounts': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'payments': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+
+# ============================
 # 💳 PAYMENT & API KEYS
 # ============================
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
@@ -149,25 +198,46 @@ FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 # 🔐 CSRF & COOKIE CONFIGURATION
 # ============================
 
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
+# CSRF cookie configuration
+# For local development (HTTP), use 'Lax'. For production (HTTPS), use 'None'
+if DEBUG:
+    CSRF_COOKIE_SAMESITE = 'Lax'  # Works with HTTP in local dev
+    CSRF_COOKIE_SECURE = False
+else:
+    CSRF_COOKIE_SAMESITE = 'None'  # Required for cross-origin in production
+    CSRF_COOKIE_SECURE = True  # Required when SameSite=None
+
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_DOMAIN = None  # Allow cross-domain cookies
 
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://*.razorpay.com',
-    'https://*.onrender.com', # Allow all render subdomains
+    'https://*.onrender.com',
     'https://payment-gateway-integration-ni9i4kmro.vercel.app',
+    'https://payment-gateway-integration-zeta.vercel.app',
+    'https://payment-gateway-integration-ashen.vercel.app',
 ]
 
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
+# Session cookie configuration
+# For local development (HTTP), use 'Lax'. For production (HTTPS), use 'None'
+if DEBUG:
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Works with HTTP in local dev
+    SESSION_COOKIE_SECURE = False
+else:
+    SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin in production
+    SESSION_COOKIE_SECURE = True  # Required when SameSite=None
+
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_DOMAIN = None  # Allow cross-domain cookies
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 
 # ============================
@@ -179,9 +249,22 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "https://payment-gateway-integration-ni9i4kmro.vercel.app",
     "https://payment-gateway-integration-zeta.vercel.app",
+    "https://payment-gateway-integration-ashen.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 
 # ============================
@@ -189,7 +272,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ============================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'payment_gateway.authentication.CsrfExemptSessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

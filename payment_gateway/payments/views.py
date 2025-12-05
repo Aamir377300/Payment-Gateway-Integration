@@ -38,6 +38,13 @@ def serialize_transaction(transaction):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_order_api(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"💳 Create order request from: {request.user.username}")
+    logger.info(f"   Origin: {request.META.get('HTTP_ORIGIN', 'None')}")
+    logger.info(f"   Session Key: {request.session.session_key}")
+    
     amount_str = request.data.get('amount')
     description = request.data.get('description', 'Payment')
     
@@ -53,9 +60,11 @@ def create_order_api(request):
     
     try:
         if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+            logger.error(f"   ❌ Razorpay keys not configured!")
             return Response({'error': 'Razorpay keys not configured.'}, status=500)
         
         amount_in_paise = int(amount * 100)
+        logger.info(f"   Amount: ₹{amount} ({amount_in_paise} paise)")
         
         transaction = Transaction.objects.create(
             user=request.user,
@@ -65,6 +74,7 @@ def create_order_api(request):
             description=description,
             status='PENDING'
         )
+        logger.info(f"   Transaction created: {transaction.order_id}")
         
         client = get_razorpay_client()
         razorpay_order = client.order.create({
@@ -73,6 +83,7 @@ def create_order_api(request):
             'receipt': transaction.order_id,
             'payment_capture': 1
         })
+        logger.info(f"   Razorpay order created: {razorpay_order['id']}")
         
         transaction.razorpay_order_id = razorpay_order['id']
         transaction.receipt = razorpay_order['receipt']
@@ -88,6 +99,8 @@ def create_order_api(request):
         
         user_name = request.user.get_full_name() or request.user.username or request.user.email.split('@')[0]
         
+        logger.info(f"   ✅ Order creation successful")
+        
         return Response({
             'transaction': serialize_transaction(transaction),
             'razorpay_key_id': settings.RAZORPAY_KEY_ID,
@@ -100,19 +113,31 @@ def create_order_api(request):
             'user_email': request.user.email,
         })
         
-    except razorpay.errors.BadRequestError:
+    except razorpay.errors.BadRequestError as e:
+        logger.error(f"   ❌ Razorpay authentication failed: {str(e)}")
         return Response({'error': 'Authentication failed. Check Razorpay credentials.'}, status=500)
     except Exception as e:
+        logger.error(f"   ❌ Error creating order: {str(e)}")
+        logger.exception("Full traceback:")
         return Response({'error': f'Error creating order: {str(e)}'}, status=500)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def verify_payment_api(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"✅ Verify payment request from: {request.user.username}")
+    logger.info(f"   Origin: {request.META.get('HTTP_ORIGIN', 'None')}")
+    
     try:
         razorpay_order_id = request.data.get('razorpay_order_id')
         razorpay_payment_id = request.data.get('razorpay_payment_id')
         razorpay_signature = request.data.get('razorpay_signature')
+        
+        logger.info(f"   Order ID: {razorpay_order_id}")
+        logger.info(f"   Payment ID: {razorpay_payment_id}")
         
         transaction = Transaction.objects.get(razorpay_order_id=razorpay_order_id, user=request.user)
         
@@ -123,6 +148,7 @@ def verify_payment_api(request):
         ).hexdigest()
         
         if generated_signature == razorpay_signature:
+            logger.info(f"   ✅ Signature verified successfully")
             transaction.razorpay_payment_id = razorpay_payment_id
             transaction.razorpay_signature = razorpay_signature
             transaction.status = 'SUCCESS'
@@ -145,6 +171,7 @@ def verify_payment_api(request):
                 'transaction': serialize_transaction(transaction)
             })
         else:
+            logger.warning(f"   ❌ Signature verification failed")
             transaction.status = 'FAILED'
             transaction.save()
             
@@ -158,21 +185,32 @@ def verify_payment_api(request):
             return Response({'error': 'Payment verification failed.'}, status=400)
             
     except Transaction.DoesNotExist:
+        logger.error(f"   ❌ Transaction not found: {razorpay_order_id}")
         return Response({'error': 'Transaction not found.'}, status=404)
     except Exception as e:
+        logger.error(f"   ❌ Error verifying payment: {str(e)}")
         return Response({'error': f'Error verifying payment: {str(e)}'}, status=500)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def payment_failure_api(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"❌ Payment failure request from: {request.user.username}")
+    logger.info(f"   Origin: {request.META.get('HTTP_ORIGIN', 'None')}")
+    
     try:
         transaction_id = request.data.get('transaction_id')
+        logger.info(f"   Transaction ID: {transaction_id}")
+        
         transaction = Transaction.objects.get(id=transaction_id, user=request.user)
         
         if transaction.status == 'PENDING':
             transaction.status = 'FAILED'
             transaction.save()
+            logger.info(f"   Transaction marked as FAILED")
             
             PaymentLog.objects.create(
                 transaction=transaction,
@@ -186,21 +224,39 @@ def payment_failure_api(request):
             'transaction': serialize_transaction(transaction)
         })
     except Transaction.DoesNotExist:
+        logger.error(f"   ❌ Transaction not found: {transaction_id}")
         return Response({'error': 'Transaction not found.'}, status=404)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def transaction_history_api(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"📜 Transaction history request from: {request.user.username}")
+    logger.info(f"   Origin: {request.META.get('HTTP_ORIGIN', 'None')}")
+    logger.info(f"   Session Key: {request.session.session_key}")
+    
     transactions = Transaction.objects.filter(user=request.user).order_by('-created_at')
+    logger.info(f"   Found {transactions.count()} transactions")
+    
     return Response([serialize_transaction(t) for t in transactions])
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def transaction_detail_api(request, transaction_id):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🔍 Transaction detail request: {transaction_id} from {request.user.username}")
+    logger.info(f"   Origin: {request.META.get('HTTP_ORIGIN', 'None')}")
+    
     try:
         transaction = Transaction.objects.get(id=transaction_id, user=request.user)
+        logger.info(f"   ✅ Transaction found: {transaction.order_id}")
         return Response(serialize_transaction(transaction))
     except Transaction.DoesNotExist:
+        logger.error(f"   ❌ Transaction not found: {transaction_id}")
         return Response({'error': 'Transaction not found.'}, status=404)

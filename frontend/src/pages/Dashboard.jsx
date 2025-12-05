@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({
     total: 0,
     successful: 0,
@@ -16,13 +16,19 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    // Only fetch data when user is authenticated and not loading
+    if (user && !authLoading) {
+      fetchDashboardData();
+    }
+  }, [user, authLoading]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('📊 Fetching dashboard data...');
       const response = await api.get('/payments/transactions/');
       const transactions = response.data;
+      
+      console.log('✅ Dashboard data fetched:', transactions.length, 'transactions');
       
       const total = transactions.length;
       const successful = transactions.filter(t => t.status === 'SUCCESS').length;
@@ -43,6 +49,7 @@ const Dashboard = () => {
       setRecentTransactions(transactions.slice(0, 5));
       setLoading(false);
     } catch (error) {
+      console.error('❌ Failed to fetch dashboard data:', error.response?.status, error.response?.data);
       setLoading(false);
     }
   };

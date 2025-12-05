@@ -1,24 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
 const TransactionHistory = () => {
+  const { user, loading: authLoading } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTransactions = async () => {
+      // Only fetch when user is authenticated
+      if (!user || authLoading) {
+        setLoading(false);
+        return;
+      }
+      
       try {
+        console.log('📜 Fetching transaction history...');
         const response = await api.get('/payments/transactions/');
         setTransactions(response.data);
+        console.log('✅ Transactions fetched:', response.data.length);
       } catch (error) {
-        // Handle error silently
+        console.error('❌ Failed to fetch transactions:', error.response?.status, error.response?.data);
       } finally {
         setLoading(false);
       }
     };
     fetchTransactions();
-  }, []);
+  }, [user, authLoading]);
 
   const getStatusBadge = (status) => {
     if (status === 'SUCCESS') {

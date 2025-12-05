@@ -11,6 +11,11 @@ from payments.views import (
 
 @ensure_csrf_cookie
 def get_csrf_token(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🍪 CSRF endpoint called from: {request.META.get('HTTP_ORIGIN', 'Unknown')}")
+    logger.info(f"   Session Key: {request.session.session_key}")
+    logger.info(f"   Cookies being set: csrftoken, sessionid")
     return JsonResponse({'detail': 'CSRF cookie set'})
 
 

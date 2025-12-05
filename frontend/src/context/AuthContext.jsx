@@ -39,8 +39,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
+    console.log('🔐 AuthContext: Logging in user...');
     const { data } = await api.post('/auth/login/', { email, password });
+    console.log('✅ AuthContext: Login response received, setting user:', data.user.username);
     setUser(data.user);
+    console.log('✅ AuthContext: User state updated');
     return data;
   };
 

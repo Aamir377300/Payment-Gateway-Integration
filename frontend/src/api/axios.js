@@ -35,6 +35,9 @@ api.interceptors.request.use(
       config.headers['X-CSRFToken'] = token;
     }
     console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+    console.log(`   withCredentials: ${config.withCredentials}`);
+    console.log(`   All cookies: ${document.cookie || 'NONE'}`);
+    console.log(`   CSRF Token: ${token || 'NONE'}`);
     return config;
   },
   error => {
@@ -46,10 +49,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => {
     console.log(`API Response: ${response.config.url} - ${response.status}`);
+    console.log(`   Cookies after response: ${document.cookie || 'NONE'}`);
     return response;
   },
   error => {
     console.error('API Error:', error.response?.status, error.response?.data || error.message);
+    console.error(`   Cookies during error: ${document.cookie || 'NONE'}`);
     return Promise.reject(error);
   }
 );

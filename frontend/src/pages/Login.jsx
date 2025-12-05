@@ -12,9 +12,16 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
+      console.log('🔑 Logging in...');
       await login(formData.email, formData.password);
+      console.log('✅ Login successful, navigating to dashboard...');
+      
+      // Small delay to ensure session cookie is set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       navigate('/dashboard');
     } catch (err) {
+      console.error('❌ Login failed:', err.response?.data);
       setError(err.response?.data?.error || 'Login failed');
     }
   };
