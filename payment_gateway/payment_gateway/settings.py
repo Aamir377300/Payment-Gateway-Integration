@@ -7,9 +7,10 @@ from urllib.parse import urlparse
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# Helper to sanitize origins
+# -----------------------------------------------------
+# Helper to clean domain (removes trailing slash, path)
+# -----------------------------------------------------
 def clean_origin(url: str) -> str:
-    """Convert any URL into scheme://host (no path, no trailing slash)."""
     if not url:
         return url
     parsed = urlparse(url)
@@ -17,17 +18,17 @@ def clean_origin(url: str) -> str:
         return f"{parsed.scheme}://{parsed.netloc}"
     return url.rstrip("/")
 
-# SECURITY
-SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-123")
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# Detect Render
-IS_RENDER = os.getenv('RENDER', False)
+# -----------------------------------------------------
+# SECURITY
+# -----------------------------------------------------
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-key")
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
 # Allowed hosts
-allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
+allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
 if allowed_hosts_env:
-    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
 else:
     ALLOWED_HOSTS = [
         "localhost",
@@ -35,7 +36,10 @@ else:
         "payment-gateway-integration-371z.onrender.com",
     ]
 
-# Installed apps
+
+# -----------------------------------------------------
+# INSTALLED APPS
+# -----------------------------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -43,27 +47,41 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "rest_framework",
     "corsheaders",
+
     "accounts",
     "payments",
 ]
 
-# Middleware
+
+# -----------------------------------------------------
+# MIDDLEWARE
+# -----------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+
+    # IMPORTANT: CORS before SessionMiddleware
     "corsheaders.middleware.CorsMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+
     "django.middleware.csrf.CsrfViewMiddleware",
+
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
 ROOT_URLCONF = "payment_gateway.urls"
 
+
+# -----------------------------------------------------
 # Templates
+# -----------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -81,7 +99,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "payment_gateway.wsgi.application"
 
-# Database
+
+# -----------------------------------------------------
+# DATABASE
+# -----------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
@@ -104,54 +125,79 @@ else:
         }
     }
 
+
 AUTH_PASSWORD_VALIDATORS = []
 
+
+# -----------------------------------------------------
+# Internationalization
+# -----------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+
+# -----------------------------------------------------
+# Static files
+# -----------------------------------------------------
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Frontend URL sanitizing
+
+# -----------------------------------------------------
+# FRONTEND URL (cleaned)
+# -----------------------------------------------------
 RAW_FRONTEND_URL = os.getenv("FRONTEND_URI", "http://localhost:5173")
 FRONTEND_URL = clean_origin(RAW_FRONTEND_URL)
 
-# Razorpay
+
+# -----------------------------------------------------
+# Razorpay Keys
+# -----------------------------------------------------
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
 
-# CSRF configuration
-CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
-CSRF_COOKIE_DOMAIN = None
 
+# -----------------------------------------------------
+# CSRF SETTINGS (VERY IMPORTANT)
+# -----------------------------------------------------
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_NAME = "csrftoken"
 CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+CSRF_COOKIE_DOMAIN = None
 
 CSRF_TRUSTED_ORIGINS = [
-    FRONTEND_URL,
+    clean_origin(FRONTEND_URL),
     clean_origin("http://localhost:5173"),
     clean_origin("http://127.0.0.1:5173"),
     clean_origin("https://payment-gateway-integration-371z.onrender.com"),
+    clean_origin("https://payment-gateway-integration-ashen.vercel.app"),
     clean_origin("https://payment-gateway-integration-zeta.vercel.app"),
     clean_origin("https://payment-gateway-integration-92s8bqcay.vercel.app"),
-    clean_origin("https://payment-gateway-integration-ashen.vercel.app"),
 ]
 
-# Session cookies
-SESSION_COOKIE_SAMESITE = "None"
+
+# -----------------------------------------------------
+# SESSION SETTINGS (CRITICAL FOR LOGIN)
+# -----------------------------------------------------
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_DOMAIN = None
 
-# CORS configuration
+
+# -----------------------------------------------------
+# CORS SETTINGS
+# -----------------------------------------------------
 CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
+
+# Allow browser to accept Set-Cookie header
+CORS_EXPOSE_HEADERS = ["Set-Cookie"]
 
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -165,9 +211,12 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-# Django REST
+
+# -----------------------------------------------------
+# REST FRAMEWORK — ONLY SESSION AUTH
+# -----------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-    ]
+    ],
 }
