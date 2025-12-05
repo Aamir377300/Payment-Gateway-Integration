@@ -178,7 +178,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://payment-gateway-integration-ni9i4kmro.vercel.app",
-    "https://payment-gateway-integration-zeta.vercel.app",  # fixed
+    "https://payment-gateway-integration-zeta.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
