@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import api from '../api/axios';
+import api, { initializeCSRF } from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -10,14 +10,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    initApp();
   }, []);
+
+  const initApp = async () => {
+    try {
+      // First, initialize CSRF token
+      await initializeCSRF();
+      // Then check if user is authenticated
+      await checkAuth();
+    } catch (error) {
+      console.error('App initialization error:', error);
+      setUser(null);
+      setLoading(false);
+    }
+  };
 
   const checkAuth = async () => {
     try {
       const { data } = await api.get('/auth/user/');
       setUser(data);
-    } catch {
+    } catch (error) {
+      // User is not authenticated, which is fine
       setUser(null);
     } finally {
       setLoading(false);

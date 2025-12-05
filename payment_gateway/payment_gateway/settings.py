@@ -5,17 +5,22 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
+# SECURITY
 SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-3bytsxp$ozrsp0@=#93x*&%#p*e3bmzo6oa=g*w-wp5z4z$w3_")
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# ALLOWED_HOSTS configuration
+# ALLOWED_HOSTS
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
 if allowed_hosts_env:
     ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
 else:
-    # Default hosts for development and Render deployment
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'payment-gateway-integration-371z.onrender.com']
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'payment-gateway-integration-371z.onrender.com',
+    ]
 
+# INSTALLED APPS
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -29,6 +34,7 @@ INSTALLED_APPS = [
     "payments",
 ]
 
+# MIDDLEWARE
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -42,10 +48,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "payment_gateway.urls"
 
+# TEMPLATES
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        'DIRS': [],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -59,6 +66,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "payment_gateway.wsgi.application"
 
+# DATABASE (PostgreSQL)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -72,33 +80,44 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = []
 
+# INTERNATIONALIZATION
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# STATIC
 STATIC_URL = "static/"
-STATICFILES_DIRS = []
+STATICFILES_DIRS = []  # Keep empty for backend API-only project
 
+# LOGIN SETTINGS
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# RAZORPAY
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 
-# Frontend URL from environment
+# FRONTEND URL
 FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 
-# CSRF Settings
+# ============================
+# 🔐 CSRF CONFIGURATION
+# ============================
+
+# Must be None + Secure=True for cross-site cookies
 CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = True  # Required for SameSite=None
 CSRF_USE_SESSIONS = False
+
+# Recommended for frontend frameworks
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,
     'http://localhost:5173',
@@ -108,21 +127,28 @@ CSRF_TRUSTED_ORIGINS = [
     'https://payment-gateway-integration-ni9i4kmro.vercel.app',
 ]
 
-# Session Settings for cross-origin
+# ============================
+# 🔐 SESSION CONFIG (Fix Vercel + Django cookie issues)
+# ============================
+
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 
-# CORS Settings
+# ============================
+# 🌍 CORS CONFIGURATION
+# ============================
+
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://payment-gateway-integration-ni9i4kmro.vercel.app",
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 
-# REST Framework
+# REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -131,13 +157,3 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
-
-# Static files for React build
-react_dist = BASE_DIR / 'frontend' / 'dist'
-if os.path.exists(react_dist):
-    STATICFILES_DIRS = [
-        BASE_DIR / 'static',
-        react_dist / 'assets',
-    ]
-else:
-    STATICFILES_DIRS = [BASE_DIR / 'static']
