@@ -9,10 +9,17 @@ const api = axios.create({
   }
 });
 
+// Store CSRF token in memory as fallback
+let csrfTokenCache = null;
+
 const getCSRFToken = () => {
+  // First try to get from cookie
   const cookies = document.cookie.split(';');
   const csrfCookie = cookies.find(c => c.trim().startsWith('csrftoken='));
-  return csrfCookie ? csrfCookie.split('=')[1] : null;
+  const cookieToken = csrfCookie ? csrfCookie.split('=')[1] : null;
+  
+  // Return cookie token if available, otherwise use cached token
+  return cookieToken || csrfTokenCache;
 };
 
 // Fetch CSRF token on app initialization
@@ -21,7 +28,14 @@ export const initializeCSRF = async () => {
   if (!csrfInitialized) {
     try {
       console.log('Fetching CSRF token...');
-      await api.get('/csrf/');
+      const response = await api.get('/csrf/');
+      
+      // Store token from response body as fallback
+      if (response.data?.csrfToken) {
+        csrfTokenCache = response.data.csrfToken;
+        console.log('CSRF token cached from response');
+      }
+      
       csrfInitialized = true;
       console.log('CSRF token fetched successfully');
     } catch (error) {
@@ -62,16 +76,34 @@ api.interceptors.response.use(
       console.error('API Error:', status, error.response?.data || error.message);
     }
     
-    // If 403 and might be CSRF issue (but not on /auth/user/), try to refetch CSRF token
-    if (status === 403 && !url?.includes('/auth/user/') && !error.config._retry) {
+    // If 403 and CSRF error, try to refetch CSRF token
+    if (status === 403 && 
+        error.response?.data?.detail?.includes('CSRF') && 
+        !url?.includes('/csrf/') && 
+        !error.config._retry) {
       error.config._retry = true;
       try {
-        console.log('Retrying with fresh CSRF token...');
-        await api.get('/csrf/');
+        console.log('CSRF token missing or invalid. Fetching new token...');
+        const csrfResponse = await api.get('/csrf/');
+        
+        // Cache token from response body
+        if (csrfResponse.data?.csrfToken) {
+          csrfTokenCache = csrfResponse.data.csrfToken;
+          console.log('CSRF token cached from response');
+        }
+        
+        // Wait a bit for cookie to be set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Get token (will use cookie or cache)
         const token = getCSRFToken();
+        
         if (token) {
           error.config.headers['X-CSRFToken'] = token;
+          console.log('Retrying request with new CSRF token');
           return api.request(error.config);
+        } else {
+          console.error('Failed to obtain CSRF token');
         }
       } catch (retryError) {
         console.error('Failed to retry with new CSRF token:', retryError);

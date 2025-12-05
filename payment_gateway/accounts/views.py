@@ -87,15 +87,27 @@ def current_user_api(request):
 def csrf_token_api(request):
     """Endpoint to get CSRF token for cross-origin requests"""
     from django.middleware.csrf import get_token
+    from rest_framework.response import Response as DRFResponse
+    
     csrf_token = get_token(request)
     
-    # Debug info (remove in production if needed)
-    response_data = {
+    # Create response with CSRF token in body
+    response = DRFResponse({
         "csrfToken": csrf_token,
         "message": "CSRF token generated successfully"
-    }
+    })
     
-    return Response(response_data)
+    # Also set it as a cookie (for same-origin scenarios)
+    response.set_cookie(
+        key='csrftoken',
+        value=csrf_token,
+        max_age=31449600,  # 1 year
+        secure=True,
+        httponly=False,
+        samesite='None'
+    )
+    
+    return response
 
 
 @api_view(["GET"])
