@@ -96,3 +96,37 @@ def csrf_token_api(request):
     }
     
     return Response(response_data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def health_check_api(request):
+    """Health check endpoint to verify backend is working"""
+    import os
+    from django.db import connection
+    
+    health_status = {
+        "status": "ok",
+        "database": "unknown",
+        "debug": os.getenv('DEBUG', 'not set'),
+        "frontend_url": os.getenv('FRONTEND_URI', 'not set'),
+    }
+    
+    # Check database connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        health_status["database"] = "connected"
+    except Exception as e:
+        health_status["database"] = f"error: {str(e)}"
+        health_status["status"] = "error"
+    
+    # Check if User table exists
+    try:
+        user_count = User.objects.count()
+        health_status["users_count"] = user_count
+    except Exception as e:
+        health_status["users_table"] = f"error: {str(e)}"
+        health_status["status"] = "error"
+    
+    return Response(health_status)

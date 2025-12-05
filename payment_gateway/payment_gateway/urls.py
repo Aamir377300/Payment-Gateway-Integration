@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
-from accounts.views import signup_api, login_api, logout_api, current_user_api
+from accounts.views import signup_api, login_api, logout_api, current_user_api, health_check_api
 from payments.views import (
     create_order_api, verify_payment_api, payment_failure_api,
     transaction_history_api, transaction_detail_api
@@ -16,6 +16,9 @@ def get_csrf_token(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # Health check
+    path('api/health/', health_check_api, name='api_health'),
     
     # CSRF token
     path('api/csrf/', get_csrf_token, name='api_csrf'),

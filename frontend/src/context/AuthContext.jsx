@@ -31,7 +31,12 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('/auth/user/');
       setUser(data);
     } catch (error) {
-      // User is not authenticated
+      // 401/403 means user is not authenticated - this is expected
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.log('User not authenticated (expected for first visit)');
+      } else {
+        console.error('Unexpected auth check error:', error);
+      }
       setUser(null);
     } finally {
       setLoading(false);

@@ -52,12 +52,21 @@ api.interceptors.response.use(
     return response;
   },
   async error => {
-    console.error('API Error:', error.response?.status, error.response?.data || error.message);
+    const status = error.response?.status;
+    const url = error.config?.url;
     
-    // If 403 and CSRF token issue, try to refetch CSRF token
-    if (error.response?.status === 403 && !error.config._retry) {
+    // Don't log 401/403 on /auth/user/ as errors (expected for unauthenticated users)
+    if ((status === 401 || status === 403) && url?.includes('/auth/user/')) {
+      console.log(`User not authenticated (${status})`);
+    } else {
+      console.error('API Error:', status, error.response?.data || error.message);
+    }
+    
+    // If 403 and might be CSRF issue (but not on /auth/user/), try to refetch CSRF token
+    if (status === 403 && !url?.includes('/auth/user/') && !error.config._retry) {
       error.config._retry = true;
       try {
+        console.log('Retrying with fresh CSRF token...');
         await api.get('/csrf/');
         const token = getCSRFToken();
         if (token) {
