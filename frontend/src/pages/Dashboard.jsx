@@ -24,11 +24,8 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      console.log('📊 Fetching dashboard data...');
       const response = await api.get('/payments/transactions/');
       const transactions = response.data;
-      
-      console.log('✅ Dashboard data fetched:', transactions.length, 'transactions');
       
       const total = transactions.length;
       const successful = transactions.filter(t => t.status === 'SUCCESS').length;
@@ -49,7 +46,6 @@ const Dashboard = () => {
       setRecentTransactions(transactions.slice(0, 5));
       setLoading(false);
     } catch (error) {
-      console.error('❌ Failed to fetch dashboard data:', error.response?.status, error.response?.data);
       setLoading(false);
     }
   };

@@ -17,12 +17,10 @@ const TransactionHistory = () => {
       }
       
       try {
-        console.log('📜 Fetching transaction history...');
         const response = await api.get('/payments/transactions/');
         setTransactions(response.data);
-        console.log('✅ Transactions fetched:', response.data.length);
       } catch (error) {
-        console.error('❌ Failed to fetch transactions:', error.response?.status, error.response?.data);
+        // Handle error silently
       } finally {
         setLoading(false);
       }
