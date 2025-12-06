@@ -175,25 +175,20 @@ CSRF_TRUSTED_ORIGINS = [
     'https://payment-gateway-integration-ashen.vercel.app',
 ]
 
-# Session cookie configuration
-# For local development (HTTP), use 'Lax'. For production (HTTPS), use 'None'
+# For local development use 'Lax' For production (HTTPS), use 'None'
 if DEBUG:
     SESSION_COOKIE_SAMESITE = 'Lax'  # Works with HTTP in local dev
     SESSION_COOKIE_SECURE = False
 else:
-    SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin in production
-    SESSION_COOKIE_SECURE = True  # Required when SameSite=None
+    SESSION_COOKIE_SAMESITE = 'None' 
+    SESSION_COOKIE_SECURE = True 
 
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_DOMAIN = None  # Allow cross-domain cookies
-SESSION_COOKIE_AGE = 1209600  # 2 weeks
-SESSION_SAVE_EVERY_REQUEST = True  # Save session on every request
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_AGE = 1209600
+SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-
-# ============================
-# 🌍 CORS CONFIGURATION
-# ============================
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
     "http://localhost:5173",
@@ -217,10 +212,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-
-# ============================
-# 🚀 REST FRAMEWORK
-# ============================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'payment_gateway.authentication.CsrfExemptSessionAuthentication',
