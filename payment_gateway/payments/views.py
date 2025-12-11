@@ -6,8 +6,8 @@ from rest_framework.response import Response
 
 from .models import Transaction, PaymentLog
 import razorpay
-import hmac
-import hashlib
+import hmac # signature verification
+import hashlib # hash function
 from decimal import Decimal, InvalidOperation
 
 
@@ -19,7 +19,7 @@ def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
 
-
+# serialize_transaction is a that converts a Transaction model instance into a plain Python dict ready for JSON responses. 
 def serialize_transaction(transaction):
     return {
         'id': transaction.id,

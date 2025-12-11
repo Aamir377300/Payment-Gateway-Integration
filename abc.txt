@@ -1,0 +1,2 @@
+cors is use for the talk about the api's
+dotenv .env ko ek dusare ko lejane me madat karta hai 

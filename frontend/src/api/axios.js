@@ -12,7 +12,6 @@ const getCSRFToken = () => {
   return csrfCookie ? csrfCookie.split('=')[1] : null;
 };
 
-// Fetch CSRF token on app initialization
 let csrfInitialized = false;
 export const initializeCSRF = async () => {
   if (!csrfInitialized) {

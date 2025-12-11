@@ -16,7 +16,6 @@ def serialize_user(user):
         "last_name": user.last_name,
     }
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def signup_api(request):
@@ -87,6 +86,5 @@ def current_user_api(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def csrf_token_api(request):
-    """Endpoint to get CSRF token for cross-origin requests"""
     from django.middleware.csrf import get_token
     return Response({"csrfToken": get_token(request)})

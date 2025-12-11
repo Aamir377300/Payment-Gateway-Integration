@@ -1,36 +1,27 @@
 from pathlib import Path
 import os
-import dj_database_url  # Required for Render DB
+import dj_database_url 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load local .env file (if it exists)
 load_dotenv(BASE_DIR / '.env')
 
-# ============================
-# 🔐 SECURITY
-# ============================
 SECRET_KEY = os.getenv('SECRET_KEY', "django-insecure-default-key-change-in-production")
 
-# Default to False in production if variable is missing
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '.onrender.com',  # Allows all render subdomains
+    '.onrender.com',  
 ]
 
-# Add any specific hosts from env
 allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
 if allowed_hosts_env:
     ALLOWED_HOSTS.extend([host.strip() for host in allowed_hosts_env.split(',') if host.strip()])
 
 
-# ============================
-# 📦 INSTALLED APPS
-# ============================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,9 +35,6 @@ INSTALLED_APPS = [
     "payments",
 ]
 
-# ============================
-# ⚙️ MIDDLEWARE
-# ============================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -79,11 +67,6 @@ TEMPLATES = [
 WSGI_APPLICATION = "payment_gateway.wsgi.application"
 
 
-# ============================
-# 🗄️ DATABASE CONFIGURATION (HYBRID)
-# ============================
-
-# 1. Default to Local PostgreSQL settings
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -95,8 +78,6 @@ DATABASES = {
     }
 }
 
-# 2. If running on Render (DATABASE_URL exists), override with Render DB
-# This handles the connection automatically using dj_database_url
 if 'DATABASE_URL' in os.environ:
     DATABASES['default'] = dj_database_url.config(
         conn_max_age=600,
@@ -104,10 +85,7 @@ if 'DATABASE_URL' in os.environ:
     )
 
 
-# ============================
-# 🔐 PASSWORDS & I18N
-# ============================
-AUTH_PASSWORD_VALIDATORS = [] # Add validators if needed for production
+AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -115,21 +93,13 @@ USE_I18N = True
 USE_TZ = True
 
 
-# ============================
-# 🎨 STATIC FILES (Whitenoise Config)
-# ============================
 STATIC_URL = "static/"
-# This is where collectstatic will put files for Render to serve
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
 
-# Enable Whitenoise compression and caching
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATICFILES_DIRS = []
 
 
-# ============================
-# 🚪 LOGIN SETTINGS
-# ============================
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
@@ -137,32 +107,23 @@ LOGOUT_REDIRECT_URL = '/'
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# ============================
-# 💳 PAYMENT & API KEYS
-# ============================
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', '')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '')
 FRONTEND_URL = os.getenv('FRONTEND_URI', 'http://localhost:5173')
 
 
-# ============================
-# 🔐 CSRF & COOKIE CONFIGURATION
-# ============================
-
-# CSRF cookie configuration
-# For local development (HTTP), use 'Lax'. For production (HTTPS), use 'None'
 if DEBUG:
-    CSRF_COOKIE_SAMESITE = 'Lax'  # Works with HTTP in local dev
+    CSRF_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SECURE = False
 else:
-    CSRF_COOKIE_SAMESITE = 'None'  # Required for cross-origin in production
-    CSRF_COOKIE_SECURE = True  # Required when SameSite=None
+    CSRF_COOKIE_SAMESITE = 'None' 
+    CSRF_COOKIE_SECURE = True 
 
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-CSRF_COOKIE_DOMAIN = None  # Allow cross-domain cookies
+CSRF_COOKIE_DOMAIN = None  
 
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,

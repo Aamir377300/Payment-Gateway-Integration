@@ -16,7 +16,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Only fetch data when user is authenticated and not loading
+    // Only fetch data when user is authenticated
     if (user && !authLoading) {
       fetchDashboardData();
     }

@@ -246,6 +246,53 @@ Access the Django admin panel at `/admin` to:
 - Filter transactions by status
 - Search by order ID or payment ID
 
+## 🧪 Running Tests
+
+### Quick Start
+
+```bash
+cd payment_gateway
+source myenv/bin/activate
+./run_tests.sh
+```
+
+Or directly:
+
+```bash
+pytest -v
+```
+
+### Test Coverage
+
+The test suite includes **6 essential test cases**:
+
+**Authentication Tests (3 tests):**
+1. User signup - Verify user registration works
+2. User login - Verify authentication works
+3. Protected endpoint - Verify security works
+
+**Payment Tests (3 tests):**
+4. Create order - Verify payment order creation
+5. Get transactions - Verify transaction history retrieval
+6. Unauthenticated access - Verify payment security
+
+### Expected Output
+
+```
+tests/test_auth.py::TestAuthentication::test_user_signup PASSED
+tests/test_auth.py::TestAuthentication::test_user_login PASSED
+tests/test_auth.py::TestAuthentication::test_protected_endpoint PASSED
+tests/test_payments.py::TestPayments::test_create_order PASSED
+tests/test_payments.py::TestPayments::test_get_transactions PASSED
+tests/test_payments.py::TestPayments::test_unauthenticated_cannot_create_order PASSED
+
+========================== 6 passed ==========================
+```
+
+### Documentation
+
+See [SIMPLE_TEST_GUIDE.md](payment_gateway/SIMPLE_TEST_GUIDE.md) for complete guide.
+
 ## Contributing
 
 1. Fork the repository
