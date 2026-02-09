@@ -289,10 +289,6 @@ tests/test_payments.py::TestPayments::test_unauthenticated_cannot_create_order P
 ========================== 6 passed ==========================
 ```
 
-### Documentation
-
-See [SIMPLE_TEST_GUIDE.md](payment_gateway/SIMPLE_TEST_GUIDE.md) for complete guide.
-
 ## Contributing
 
 1. Fork the repository
