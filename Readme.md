@@ -4,6 +4,13 @@ A small merchant payment desk. Create an account, open a checkout, confirm the p
 
 Sandbox mode is the default when Razorpay keys are missing, so the whole flow can be demoed locally. Add test keys and the same screens talk to Razorpay.
 
+## Screenshots
+
+<p>
+  <img src="photos/Dashboard.png" alt="Dashboard" width="460">
+  <img src="photos/checkout.png" alt="Checkout" width="460">
+</p>
+
 ## Stack
 
 - Django and Django REST Framework, session auth, SQLite by default or PostgreSQL when configured
