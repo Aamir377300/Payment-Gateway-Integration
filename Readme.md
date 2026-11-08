@@ -1,306 +1,125 @@
-# PayGate - Payment Gateway Integration
+# PayGate
 
-A full-stack payment gateway application built with Django REST Framework and React, integrated with Razorpay for secure payment processing.
+A small merchant payment desk. Create an account, open a checkout, confirm the payment with a signature check, then search the ledger, export it, open a receipt, or refund it.
 
-## Screenshot's
-<div style="display: flex; justify-content: center; gap: 12px;">
-  <img src="photos/Dashboard.png" alt="Dashboard" width="460">
-  <img src="photos/checkout.png" alt="Checkout" width="460">
-</div>
+Sandbox mode is the default when Razorpay keys are missing, so the whole flow can be demoed locally. Add test keys and the same screens talk to Razorpay.
 
+## Stack
 
+- Django and Django REST Framework, session auth, SQLite by default or PostgreSQL when configured
+- React and Vite
+- Razorpay, used only when `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are set
+- pytest
 
-## Live Demo
+## Run it locally
 
-- **Frontend:** https://payment-gateway-integration-zeta.vercel.app
-- **Backend API:** https://payment-gateway-integration-371z.onrender.com
-- **Admin Panel:** https://payment-gateway-integration-371z.onrender.com/admin
-
-## Features
-
-- User authentication (signup, login, logout)
-- Secure payment processing with Razorpay
-- Transaction history and tracking
-- Real-time payment status updates
-- Admin dashboard for managing users and transactions
-- Payment logs for audit trails
-- Responsive design for all devices
-
-## Tech Stack
-
-### Backend
-
-- Django 6.0
-- Django REST Framework
-- PostgreSQL (Render)
-- Razorpay Payment Gateway
-- Gunicorn + Whitenoise
-
-### Frontend
-
-- React 18
-- Vite
-- Axios
-- React Router
-- CSS3
-
-## API Endpoints
-
-### Authentication Endpoints
-
-| Method | Endpoint              | Description                               | Auth Required |
-| ------ | --------------------- | ----------------------------------------- | ------------- |
-| GET    | `/api/csrf/`        | Initialize CSRF token for secure requests | No            |
-| POST   | `/api/auth/signup/` | Register a new user account               | No            |
-| POST   | `/api/auth/login/`  | Authenticate user and create session      | No            |
-| POST   | `/api/auth/logout/` | End user session                          | Yes           |
-| GET    | `/api/auth/user/`   | Get current authenticated user details    | Yes           |
-
-### Payment Endpoints
-
-| Method | Endpoint                             | Description                           | Auth Required |
-| ------ | ------------------------------------ | ------------------------------------- | ------------- |
-| POST   | `/api/payments/create-order/`      | Create a new Razorpay payment order   | Yes           |
-| POST   | `/api/payments/verify/`            | Verify Razorpay payment signature     | Yes           |
-| POST   | `/api/payments/failure/`           | Mark a pending payment as failed      | Yes           |
-| GET    | `/api/payments/transactions/`      | Get all transactions for current user | Yes           |
-| GET    | `/api/payments/transactions/{id}/` | Get specific transaction details      | Yes           |
-
-## Local Development Setup
-
-### Prerequisites
-
-- Python 3.13+
-- Node.js 18+
-- PostgreSQL
-- Razorpay Account (Test Mode)
-
-### Backend Setup
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd payment_gateway
-```
-
-2. Create virtual environment:
+From `payment_gateway`:
 
 ```bash
 python -m venv myenv
-source myenv/bin/activate  # On Windows: myenv\Scripts\activate
-```
-
-3. Install dependencies:
-
-```bash
+source myenv/bin/activate
 pip install -r requirements.txt
-```
-
-4. Create `.env` file:
-
-```env
-DB_NAME=payment_gateway_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_HOST=localhost
-DB_PORT=5432
-
-SECRET_KEY=your-secret-key-here
-DEBUG=True
-
-RAZORPAY_KEY_ID=rzp_test_your_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_secret
-
-FRONTEND_URI=http://localhost:5173
-```
-
-5. Run migrations:
-
-```bash
 python manage.py migrate
-```
-
-6. Create superuser:
-
-```bash
-python manage.py createsuperuser
-```
-
-7. Run development server:
-
-```bash
 python manage.py runserver
 ```
 
-Backend will be available at `http://localhost:8000`
-
-### Frontend Setup
-
-1. Navigate to frontend directory:
-
-```bash
-cd frontend
-```
-
-2. Install dependencies:
+From `frontend`:
 
 ```bash
 npm install
-```
-
-3. Create `.env` file:
-
-```env
-VITE_API_URL=http://localhost:8000/api
-```
-
-4. Run development server:
-
-```bash
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:5173`
+Open `http://localhost:5173`.
 
-## Production Deployment
+The demo merchant is created on migrate while the app is in sandbox or `DEBUG=True`:
 
-### Backend (Render)
+- Email: `demo@paygate.dev`
+- Password: `DemoPass123`
 
-1. Create a new Web Service on Render
-2. Connect your GitHub repository
-3. Set build command: `./build.sh`
-4. Set start command: `python manage.py migrate && gunicorn payment_gateway.wsgi:application`
-5. Add environment variables:
-   - `DEBUG=False`
-   - `SECRET_KEY=<your-secret-key>`
-   - `DATABASE_URL=<auto-set-by-render>`
-   - `FRONTEND_URI=https://your-frontend.vercel.app`
-   - `RAZORPAY_KEY_ID=<your-key>`
-   - `RAZORPAY_KEY_SECRET=<your-secret>`
-   - `ADMIN_USERNAME=admin` (optional)
-   - `ADMIN_EMAIL=admin@example.com` (optional)
-   - `ADMIN_PASSWORD=secure_password` (optional)
+You can recreate that account any time with `python manage.py seed_demo`.
 
-### Frontend (Vercel)
+No `.env` file is required for the sandbox. Copy `.env.example` when you want Postgres, a custom secret, or Razorpay.
 
-1. Import your GitHub repository to Vercel
-2. Set framework preset: Vite
-3. Set root directory: `frontend`
-4. Add environment variable:
-   - `VITE_API_URL=https://your-backend.onrender.com/api`
-5. Deploy
+## Take a real payment
 
-## Security Features
+Leave the code as it is. In `payment_gateway/.env`, set the two Razorpay values and restart the server:
 
-- CSRF protection for all state-changing requests
-- Session-based authentication with secure cookies
-- CORS configuration for cross-origin requests
-- Password hashing with Django's built-in system
-- Razorpay signature verification for payment security
-- HTTPS enforcement in production
+```env
+RAZORPAY_KEY_ID=rzp_test_your_key
+RAZORPAY_KEY_SECRET=your_secret
+```
 
-## Database Schema
+`rzp_test_` opens the real Razorpay checkout and accepts their test card `4111 1111 1111 1111`. Nothing is charged. Replace those with your `rzp_live_` key id and live secret when a card should actually be charged. The same Pay button, signature check, receipt, and refund are used either way.
 
-### User (Django Built-in)
+If the Razorpay webhook secret is different from the key secret, also set `RAZORPAY_WEBHOOK_SECRET`. Point the webhook at `https://<your-backend>/api/payments/webhook/`.
 
-- id, username, email, password, first_name, last_name
+## Payment modes
 
-### Transaction
+| `PAYMENT_MODE` | Behavior |
+| --- | --- |
+| `auto` (default) | Razorpay if both keys exist, otherwise sandbox |
+| `sandbox` | Always simulate checkout on this server |
+| `razorpay` | Require Razorpay keys and open their checkout |
 
-- id, user (FK), order_id, amount, currency, status
-- razorpay_order_id, razorpay_payment_id, razorpay_signature
-- description, receipt, created_at, updated_at
+In sandbox, checkout asks you to mark the payment paid, declined, or cancelled. The server still builds an HMAC signature and runs it through the same verification function used for Razorpay. A bad signature fails the payment.
 
-### PaymentLog
+With Razorpay keys, checkout loads Razorpay and accepts the payment only when `order_id|payment_id` matches the returned signature.
 
-- id, transaction (FK), event_type, payload (JSON)
-- message, ip_address, created_at
+## What the app covers
 
-## Frontend Routes
+- Signup, login, and logout, with Django's password validators
+- Orders scoped to the logged-in user
+- Dashboard totals calculated on the server
+- Search, status filter, and pagination
+- CSV export of the current filter
+- Receipt with an activity log
+- Refund of a successful payment (immediate in sandbox, Razorpay refund API when live)
+- Webhook endpoint that ignores a body unless `X-Razorpay-Signature` matches
+- Django admin for users, transactions, and payment logs
 
-- `/` - Home page
-- `/login` - User login
-- `/signup` - User registration
-- `/dashboard` - User dashboard (protected)
-- `/payment` - Payment form (protected)
-- `/transactions` - Transaction history (protected)
-- `/checkout` - Razorpay checkout (protected)
-- `/payment-success/:id` - Payment success page
-- `/payment-failure/:id` - Payment failure page
+## API
 
-## 🔧 Configuration Notes
+| Method | Path | Auth |
+| --- | --- | --- |
+| GET | `/api/health/` | No |
+| GET | `/api/config/` | No |
+| GET | `/api/csrf/` | No |
+| POST | `/api/auth/signup/` | No |
+| POST | `/api/auth/login/` | No |
+| POST | `/api/auth/logout/` | Yes |
+| GET | `/api/auth/user/` | Yes |
+| POST | `/api/payments/create-order/` | Yes |
+| POST | `/api/payments/verify/` | Yes |
+| POST | `/api/payments/failure/` | Yes |
+| POST | `/api/payments/sandbox/complete/` | Yes |
+| GET | `/api/payments/summary/` | Yes |
+| GET | `/api/payments/transactions/` | Yes |
+| GET | `/api/payments/transactions/export/` | Yes |
+| GET | `/api/payments/transactions/<id>/` | Yes |
+| POST | `/api/payments/transactions/<id>/refund/` | Yes |
+| POST | `/api/payments/webhook/` | Signed body |
 
-### Cookie Settings
+`GET /api/payments/transactions/` accepts `status`, `q`, and `page`.
 
-- **Development (HTTP):** `SameSite=Lax`, `Secure=False`
-- **Production (HTTPS):** `SameSite=None`, `Secure=True`
-
-## Admin Panel
-
-Access the Django admin panel at `/admin` to:
-
-- View and manage users
-- Monitor all transactions
-- Review payment logs
-- Filter transactions by status
-- Search by order ID or payment ID
-
-## 🧪 Running Tests
-
-### Quick Start
+## Tests
 
 ```bash
 cd payment_gateway
 source myenv/bin/activate
-./run_tests.sh
-```
-
-Or directly:
-
-```bash
 pytest -v
 ```
 
-### Test Coverage
+The suite uses SQLite even if a `.env` points at Postgres. It covers auth validation, sandbox checkout, bad signatures, ownership, refunds, filters, CSV export, webhooks, and the Razorpay order call with the client mocked.
 
-The test suite includes **6 essential test cases**:
+## Deploy notes
 
-**Authentication Tests (3 tests):**
-1. User signup - Verify user registration works
-2. User login - Verify authentication works
-3. Protected endpoint - Verify security works
+Backend: set `DATABASE_URL`, `SECRET_KEY`, `DEBUG=False`, `FRONTEND_URI`, and the Razorpay keys. Build with `./build.sh`. Start with `python manage.py migrate && gunicorn payment_gateway.wsgi:application`.
 
-**Payment Tests (3 tests):**
-4. Create order - Verify payment order creation
-5. Get transactions - Verify transaction history retrieval
-6. Unauthenticated access - Verify payment security
+Frontend: set the Vite root to `frontend` and `VITE_API_URL` to `https://<backend>/api`.
 
-### Expected Output
-
-```
-tests/test_auth.py::TestAuthentication::test_user_signup PASSED
-tests/test_auth.py::TestAuthentication::test_user_login PASSED
-tests/test_auth.py::TestAuthentication::test_protected_endpoint PASSED
-tests/test_payments.py::TestPayments::test_create_order PASSED
-tests/test_payments.py::TestPayments::test_get_transactions PASSED
-tests/test_payments.py::TestPayments::test_unauthenticated_cannot_create_order PASSED
-
-========================== 6 passed ==========================
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+Set `SEED_DEMO=0` in production if you do not want the demo merchant created on migrate.
 
 ## Author
 
-**Aamir Belal Khan**
-
----
-
-Built with ❤️ using Django and React
+Aamir Belal Khan

@@ -20,7 +20,9 @@ class Transaction(models.Model):
     razorpay_payment_id = models.CharField(max_length=100, blank=True, default='')
     razorpay_signature = models.CharField(max_length=255, blank=True, default='')
 
+    provider = models.CharField(max_length=20, default='sandbox')
     description = models.TextField(blank=True, default='')
+    failure_reason = models.CharField(max_length=255, blank=True, default='')
     receipt = models.CharField(max_length=100, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -42,6 +44,7 @@ class PaymentLog(models.Model):
         ("WEBHOOK_RECEIVED", "Webhook Received"),
         ("SIGNATURE_VERIFIED", "Signature Verified"),
         ("SIGNATURE_FAILED", "Signature Failed"),
+        ("REFUND", "Refund"),
     ]
 
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True, blank=True)

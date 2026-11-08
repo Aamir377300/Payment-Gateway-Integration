@@ -5,107 +5,83 @@ import { useAuth } from '../context/AuthContext';
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { login, config } = useAuth();
   const navigate = useNavigate();
+  const demo = config?.demo_login;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
+    setSubmitting(true);
     try {
       await login(formData.email, formData.password);
-      await new Promise(resolve => setTimeout(resolve, 100));
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <section className="auth-section">
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <h1>Welcome Back</h1>
-            <p>Login to your PayGate account</p>
-          </div>
+    <section className="auth-layout">
+      <div className="auth-card">
+        <p className="eyebrow">Merchant login</p>
+        <h1>Welcome back</h1>
+        <p className="lede">Use your account, or the seeded demo merchant if you have run the demo setup.</p>
 
-          {error && <div className="alert alert-error">{error}</div>}
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                className="form-control"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                autoFocus
-              />
+        {demo && (
+          <div className="demo-card">
+            <div>
+              <strong>Demo merchant</strong>
+              <p>{demo.email}</p>
+              <p>{demo.password}</p>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                className="form-control"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-options">
-              <label className="checkbox-label">
-                <input type="checkbox" name="remember" />
-                <span>Remember me</span>
-              </label>
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-block">
-              Login
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setFormData({ email: demo.email, password: demo.password })}
+            >
+              Fill demo login
             </button>
-          </form>
-
-          <div className="auth-footer">
-            <p>Don't have an account? <Link to="/signup" className="link">Sign up</Link></p>
           </div>
-        </div>
+        )}
 
-        <div className="auth-visual">
-          <div className="visual-content">
-            <h2>Secure Payment Processing</h2>
-            <p>Join thousands of businesses using PayGate for reliable and secure payment solutions.</p>
-            <div className="visual-features">
-              <div className="visual-feature">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 12L11 14L15 10" stroke="#43e97b" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="9" stroke="#43e97b" strokeWidth="2" />
-                </svg>
-                <span>Bank-grade security</span>
-              </div>
-              <div className="visual-feature">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 12L11 14L15 10" stroke="#43e97b" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="9" stroke="#43e97b" strokeWidth="2" />
-                </svg>
-                <span>Real-time updates</span>
-              </div>
-              <div className="visual-feature">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 12L11 14L15 10" stroke="#43e97b" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="12" r="9" stroke="#43e97b" strokeWidth="2" />
-                </svg>
-                <span>24/7 support</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <form onSubmit={handleSubmit} className="stack">
+          <label className="field">
+            Email
+            <input
+              type="email"
+              className="form-control"
+              value={formData.email}
+              onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+              required
+              autoFocus
+            />
+          </label>
+          <label className="field">
+            Password
+            <input
+              type="password"
+              className="form-control"
+              value={formData.password}
+              onChange={(event) => setFormData({ ...formData, password: event.target.value })}
+              required
+            />
+          </label>
+          <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+            {submitting ? 'Signing in…' : 'Log in'}
+          </button>
+        </form>
+        <p className="auth-switch">No account yet? <Link to="/signup">Create one</Link></p>
       </div>
+      <aside className="auth-aside">
+        <h2>A desk, not a marketing page.</h2>
+        <p>Log in, take a sandbox payment, then open the receipt. That is the project.</p>
+      </aside>
     </section>
   );
 };

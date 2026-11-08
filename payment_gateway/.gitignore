@@ -22,6 +22,8 @@ venv.bak/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+.pytest.sqlite3
+test_*.sqlite3
 media/
 staticfiles/
 static/

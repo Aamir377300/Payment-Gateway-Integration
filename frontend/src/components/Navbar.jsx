@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
@@ -9,75 +9,60 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleLogout = async () => {
     await logout();
+    setShowDropdown(false);
     navigate('/');
   };
 
-  const getInitial = () => {
-    if (user?.first_name) return user.first_name[0].toUpperCase();
-    if (user?.username) return user.username[0].toUpperCase();
-    return 'U';
-  };
+  const initial = (user?.first_name || user?.email || 'U')[0].toUpperCase();
 
   return (
     <nav className="navbar">
-      <div className="container">
-        <div className="nav-brand">
-          <Link to="/">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="url(#gradient)" />
-              <path d="M16 8L22 14L16 20L10 14L16 8Z" fill="white" />
-              <defs>
-                <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
-                  <stop offset="0%" stopColor="#667eea" />
-                  <stop offset="100%" stopColor="#764ba2" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <span>PayGate</span>
-          </Link>
-        </div>
+      <div className="container nav-inner">
+        <Link to={user ? '/dashboard' : '/'} className="brand">
+          <span className="brand-mark">P</span>
+          <span>PayGate</span>
+        </Link>
         <div className="nav-links">
           {user ? (
-            <div className="user-menu" ref={dropdownRef}>
-              <button className="user-avatar" onClick={() => setShowDropdown(!showDropdown)}>
-                <span className="avatar-text">{getInitial()}</span>
-              </button>
-              <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`}>
-                <div className="dropdown-header">
-                  <div className="dropdown-user-info">
-                    <strong>{user.first_name || user.email}</strong>
-                    <span>{user.email}</span>
-                  </div>
-                </div>
-                <div className="dropdown-divider"></div>
-                <Link to="/dashboard" className="dropdown-item" onClick={() => setShowDropdown(false)}>
-                  Dashboard
-                </Link>
-                <Link to="/transactions" className="dropdown-item" onClick={() => setShowDropdown(false)}>
-                  Transactions
-                </Link>
-                <div className="dropdown-divider"></div>
-                <button className="dropdown-item logout" onClick={handleLogout}>
-                  Logout
+            <>
+              <NavLink to="/dashboard" className="nav-link">Dashboard</NavLink>
+              <NavLink to="/payment" className="nav-link">New payment</NavLink>
+              <NavLink to="/transactions" className="nav-link">History</NavLink>
+              <div className="user-menu" ref={dropdownRef}>
+                <button
+                  className="user-avatar"
+                  onClick={() => setShowDropdown((open) => !open)}
+                  aria-label="Account menu"
+                  aria-expanded={showDropdown}
+                >
+                  {initial}
                 </button>
+                {showDropdown && (
+                  <div className="dropdown-menu">
+                    <div className="dropdown-header">
+                      <strong>{user.first_name || 'Merchant'}</strong>
+                      <span>{user.email}</span>
+                    </div>
+                    <button className="dropdown-item" onClick={handleLogout}>Log out</button>
+                  </div>
+                )}
               </div>
-            </div>
+            </>
           ) : (
             <>
-              <Link to="/login" className="btn btn-outline">Login</Link>
-              <Link to="/signup" className="btn btn-primary">Sign Up</Link>
+              <Link to="/login" className="btn btn-ghost">Log in</Link>
+              <Link to="/signup" className="btn btn-primary">Create account</Link>
             </>
           )}
         </div>

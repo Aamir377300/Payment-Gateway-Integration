@@ -1,62 +1,90 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { formatINR } from '../utils/format';
 
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const orderData = location.state?.orderData;
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const chargeMode = orderData?.charge_mode || (orderData?.payment_mode === 'sandbox' ? 'sandbox' : 'test');
+  const sandbox = chargeMode === 'sandbox';
+  const missingGateway = Boolean(
+    orderData && !sandbox && (!orderData.razorpay_key_id || !orderData.razorpay_order_id)
+  );
+  const [error, setError] = useState(
+    missingGateway ? 'This order is missing Razorpay checkout details.' : ''
+  );
+  const [busy, setBusy] = useState(false);
+  const [gatewayReady, setGatewayReady] = useState(Boolean(sandbox));
 
   useEffect(() => {
     if (!orderData) {
-      navigate('/payment');
-      return;
+      navigate('/payment', { replace: true });
+      return undefined;
     }
-
-    if (!orderData.razorpay_key_id || !orderData.razorpay_order_id || !orderData.amount_in_paise) {
-      setError('Invalid order data');
-      setIsLoading(false);
-      return;
+    if (sandbox) {
+      return undefined;
     }
-    // razorpay window pop up 
+    if (!orderData.razorpay_key_id || !orderData.razorpay_order_id) {
+      return undefined;
+    }
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
-    script.onload = () => setIsLoading(false);
-    script.onerror = () => {
-      setError('Failed to load payment gateway');
-      setIsLoading(false);
-    };
+    script.onload = () => setGatewayReady(true);
+    script.onerror = () => setError('Razorpay checkout could not be loaded.');
     document.body.appendChild(script);
-
     return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
+      if (document.body.contains(script)) document.body.removeChild(script);
     };
-  }, [orderData, navigate]);
+  }, [orderData, navigate, sandbox]);
 
-  const handlePayment = () => {
+  const finishFailure = async (reason) => {
+    await api.post('/payments/failure/', {
+      transaction_id: orderData.transaction.id,
+      reason,
+    });
+    navigate(`/payment-failure/${orderData.transaction.id}`);
+  };
+
+  const recordSandbox = async (outcome) => {
+    setBusy(true);
+    setError('');
+    try {
+      if (outcome === 'cancel') {
+        await finishFailure('Checkout was cancelled.');
+        return;
+      }
+      const { data } = await api.post('/payments/sandbox/complete/', {
+        transaction_id: orderData.transaction.id,
+        outcome,
+      });
+      const path = data.transaction.status === 'SUCCESS' ? 'payment-success' : 'payment-failure';
+      navigate(`/${path}/${data.transaction.id}`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not record the sandbox payment');
+      setBusy(false);
+    }
+  };
+
+  const openRazorpay = () => {
     if (!window.Razorpay) {
-      setError('Razorpay not loaded');
+      setError('Razorpay is not ready yet.');
       return;
     }
-
-    const amount = parseInt(orderData.amount_in_paise);
-    if (isNaN(amount) || amount <= 0) {
-      setError('Invalid amount');
-      return;
-    }
-
     const options = {
       key: orderData.razorpay_key_id,
-      amount: amount,
+      amount: orderData.amount_in_paise,
       currency: 'INR',
       name: 'PayGate',
-      description: orderData.description || 'Payment',
+      description: orderData.description,
       order_id: orderData.razorpay_order_id,
+      prefill: {
+        name: orderData.user_name || '',
+        email: orderData.user_email || '',
+      },
+      theme: { color: '#0e6b56' },
       handler: async (response) => {
         try {
           await api.post('/payments/verify/', {
@@ -65,118 +93,68 @@ const Checkout = () => {
             razorpay_signature: response.razorpay_signature,
           });
           navigate(`/payment-success/${orderData.transaction.id}`);
-        } catch (error) {
+        } catch {
           navigate(`/payment-failure/${orderData.transaction.id}`);
         }
       },
-      prefill: {
-        name: orderData.user_name || '',
-        email: orderData.user_email || '',
-        contact: orderData.user_contact || '',
+      modal: {
+        ondismiss: () => {
+          finishFailure('Checkout was cancelled.');
+        },
       },
-      method: { upi: true, card: true, netbanking: true, wallet: true },
-      theme: { color: '#667eea' },
-      modal: { ondismiss: () => navigate(`/payment-failure/${orderData.transaction.id}`) }
     };
-
-    try {
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', (response) => {
-        setError(response.error?.description || 'Payment failed');
-      });
-      rzp.open();
-    } catch (error) {
-      setError('Failed to open payment');
-    }
+    const checkout = new window.Razorpay(options);
+    checkout.on('payment.failed', () => {
+      finishFailure('The card was declined.');
+    });
+    checkout.open();
   };
 
   if (!orderData) return null;
 
-  if (error) {
-    return (
-      <section className="auth-section">
-        <div className="container" style={{ maxWidth: '600px', textAlign: 'center' }}>
-          <div className="auth-card">
-            <div style={{ fontSize: '80px', marginBottom: '20px' }}>⚠️</div>
-            <h1>Payment Issue</h1>
-            <div className="alert alert-error" style={{ marginBottom: '30px' }}>
-              {error}
-            </div>
-            <button onClick={() => setError('')} className="btn btn-primary">
-              Try Again
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="auth-section">
-      <div className="container" style={{ maxWidth: '600px' }}>
-        <div className="auth-card">
-          <div className="auth-header">
-            <h1>🔒 Secure Checkout</h1>
-            <p>Complete your payment securely</p>
-          </div>
+    <section className="page">
+      <div className="container narrow">
+        <p className="eyebrow">
+          {chargeMode === 'live' && 'Live Razorpay checkout'}
+          {chargeMode === 'test' && 'Razorpay test checkout'}
+          {chargeMode === 'sandbox' && 'Sandbox checkout'}
+        </p>
+        <h1>{formatINR(orderData.amount)}</h1>
+        <p className="lede">{orderData.description}</p>
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
 
-          <div style={{ margin: '30px 0', background: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Payment Details</h3>
-            <table style={{ width: '100%' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Order ID:</td>
-                  <td style={{ padding: '8px' }}><strong>{orderData.transaction.order_id}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Description:</td>
-                  <td style={{ padding: '8px' }}>{orderData.description || 'Payment'}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Amount:</td>
-                  <td style={{ padding: '8px', fontSize: '24px', color: '#667eea' }}>
-                    <strong>₹{orderData.amount}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div className="panel">
+          <dl className="meta">
+            <div><dt>Order</dt><dd>{orderData.transaction.order_id}</dd></div>
+            <div>
+              <dt>Provider</dt>
+              <dd>{chargeMode === 'live' ? 'Razorpay live' : chargeMode === 'test' ? 'Razorpay test' : 'Sandbox'}</dd>
+            </div>
+          </dl>
 
-          <button
-            onClick={handlePayment}
-            className="btn btn-primary btn-block"
-            disabled={isLoading}
-            style={{ 
-              padding: '15px',
-              fontSize: '18px',
-              fontWeight: 'bold'
-            }}
-          >
-            {isLoading ? 'Loading Payment Gateway...' : `Pay ₹${orderData.amount}`}
-          </button>
-
-          <div style={{ 
-            marginTop: '20px', 
-            padding: '15px', 
-            background: '#e7f3ff', 
-            borderRadius: '8px',
-            fontSize: '14px',
-            textAlign: 'center'
-          }}>
-            <p style={{ margin: 0, color: '#666' }}>
-              🔐 Secured by Razorpay • All payment methods accepted
-            </p>
-          </div>
-
-          <div className="auth-footer" style={{ marginTop: '20px' }}>
-            <button 
-              onClick={() => navigate('/payment')} 
-              className="link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ← Back to Payment Form
+          {sandbox ? (
+            <div className="choice-grid">
+              <button className="btn btn-primary" disabled={busy} onClick={() => recordSandbox('success')}>
+                Mark as paid
+              </button>
+              <button className="btn btn-outline" disabled={busy} onClick={() => recordSandbox('failed')}>
+                Decline the card
+              </button>
+              <button className="btn btn-ghost" disabled={busy} onClick={() => recordSandbox('cancel')}>
+                Cancel checkout
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-primary btn-block" disabled={!gatewayReady || busy} onClick={openRazorpay}>
+              {gatewayReady ? `Pay ${formatINR(orderData.amount)}` : 'Loading Razorpay…'}
             </button>
-          </div>
+          )}
+          <p className="hint center">
+            {chargeMode === 'sandbox' && 'These buttons call the same verification path a real Razorpay signature uses.'}
+            {chargeMode === 'test' && 'Test card 4111 1111 1111 1111, any future expiry, any CVV. PayGate accepts it only if the signature matches.'}
+            {chargeMode === 'live' && 'This can charge a real card. PayGate accepts the payment only if the Razorpay signature matches.'}
+          </p>
         </div>
       </div>
     </section>

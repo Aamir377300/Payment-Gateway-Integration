@@ -3,39 +3,40 @@ import api, { initializeCSRF } from '../api/axios';
 
 const AuthContext = createContext();
 
+// Hook and provider live together so pages can call useAuth() without a second module.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let ignore = false;
+    const initApp = async () => {
+      try {
+        await initializeCSRF();
+        const [configResult, userResult] = await Promise.allSettled([
+          api.get('/config/'),
+          api.get('/auth/user/'),
+        ]);
+        if (ignore) return;
+        if (configResult.status === 'fulfilled') {
+          setConfig(configResult.value.data);
+        }
+        setUser(userResult.status === 'fulfilled' ? userResult.value.data : null);
+      } catch {
+        if (!ignore) setUser(null);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
     initApp();
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  const initApp = async () => {
-    try {
-      // First, initialize CSRF token
-      await initializeCSRF();
-      // Then check if user is authenticated
-      await checkAuth();
-    } catch (error) {
-      console.error('App initialization error:', error);
-      setUser(null);
-      setLoading(false);
-    }
-  };
-
-  const checkAuth = async () => {
-    try {
-      const { data } = await api.get('/auth/user/');
-      setUser(data);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login/', { email, password });
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, config, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

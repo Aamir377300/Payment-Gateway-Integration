@@ -1,70 +1,53 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/axios';
+import StatusBadge from '../components/StatusBadge';
+import { formatINR } from '../utils/format';
 
 const PaymentFailure = () => {
   const { transactionId } = useParams();
   const [transaction, setTransaction] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchTransaction = async () => {
+    const load = async () => {
       try {
         const response = await api.get(`/payments/transactions/${transactionId}/`);
-        setTransaction(response.data);
-        
-        if (response.data.status === 'PENDING') {
-          await api.post('/payments/failure/', { transaction_id: transactionId });
+        let current = response.data;
+        if (current.status === 'PENDING') {
+          const failed = await api.post('/payments/failure/', { transaction_id: transactionId });
+          current = failed.data.transaction;
         }
-      } catch (error) {
-        // Handle error silently
+        setTransaction(current);
+      } catch {
+        setError('This payment could not be loaded.');
       }
     };
-    fetchTransaction();
+    load();
   }, [transactionId]);
 
-  if (!transaction) return <div>Loading...</div>;
-
   return (
-    <section className="auth-section">
-      <div className="container" style={{ maxWidth: '600px', textAlign: 'center' }}>
-        <div className="auth-card">
-          <div style={{ fontSize: '80px', marginBottom: '20px' }}>❌</div>
-          <h1>Payment Failed</h1>
-          <p>Unfortunately, your payment could not be processed.</p>
-
-          <div style={{ margin: '30px 0', background: '#f8f9fa', padding: '20px', borderRadius: '8px', textAlign: 'left' }}>
-            <h3 style={{ marginBottom: '15px' }}>Transaction Details</h3>
-            <table style={{ width: '100%' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Order ID:</td>
-                  <td style={{ padding: '8px' }}><strong>{transaction.order_id}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Amount:</td>
-                  <td style={{ padding: '8px' }}><strong>₹{transaction.amount}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Status:</td>
-                  <td style={{ padding: '8px' }}>
-                    <span style={{ background: '#dc3545', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px' }}>
-                      {transaction.status}
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Date:</td>
-                  <td style={{ padding: '8px' }}>{new Date(transaction.created_at).toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
+    <section className="page">
+      <div className="container narrow">
+        <p className="eyebrow">Checkout closed</p>
+        <h1>Not paid</h1>
+        {error && <div className="alert alert-error">{error}</div>}
+        {!transaction && !error && <p className="empty">Updating the payment…</p>}
+        {transaction && (
+          <div className="panel">
+            <StatusBadge status={transaction.status} />
+            <p className="amount">{formatINR(transaction.amount)}</p>
+            <p>{transaction.failure_reason || 'The payment was not completed.'}</p>
+            <dl className="meta">
+              <div><dt>Order</dt><dd>{transaction.order_id}</dd></div>
+              <div><dt>For</dt><dd>{transaction.description}</dd></div>
+            </dl>
+            <div className="button-row">
+              <Link to="/payment" className="btn btn-primary">Try another payment</Link>
+              <Link to={`/transactions/${transaction.id}`} className="btn btn-outline">View record</Link>
+            </div>
           </div>
-
-          <div style={{ marginTop: '30px' }}>
-            <Link to="/payment" className="btn btn-primary">Try Again</Link>
-            <Link to="/dashboard" className="btn btn-outline" style={{ marginLeft: '10px' }}>Back to Dashboard</Link>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );

@@ -15,12 +15,8 @@ const getCSRFToken = () => {
 let csrfInitialized = false;
 export const initializeCSRF = async () => {
   if (!csrfInitialized) {
-    try {
-      await api.get('/csrf/');
-      csrfInitialized = true;
-    } catch (error) {
-      throw error;
-    }
+    await api.get('/csrf/');
+    csrfInitialized = true;
   }
 };
 

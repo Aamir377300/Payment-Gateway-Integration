@@ -1,206 +1,206 @@
-from django.conf import settings
+import csv
+import json
 
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Transaction, PaymentLog
-import razorpay
-import hmac # signature verification
-import hashlib # hash function
-from decimal import Decimal, InvalidOperation
+from .models import PaymentLog
+from .services import (
+    PaymentError,
+    apply_webhook,
+    complete_sandbox,
+    create_order,
+    filtered_transactions,
+    get_client_ip,
+    mark_failed,
+    order_payload,
+    owned_transaction,
+    paginate_transactions,
+    payment_mode,
+    refund_transaction,
+    safe_compare,
+    serialize_activity,
+    serialize_transaction,
+    sign_webhook,
+    summary_for,
+    verify_payment,
+)
 
 
-def get_razorpay_client():
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+def guarded(action):
+    try:
+        return action()
+    except PaymentError as exc:
+        return Response({'error': exc.message}, status=exc.status)
 
 
-def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    return x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
-
-# serialize_transaction is a that converts a Transaction model instance into a plain Python dict ready for JSON responses. 
-def serialize_transaction(transaction):
-    return {
-        'id': transaction.id,
-        'order_id': transaction.order_id,
-        'razorpay_order_id': transaction.razorpay_order_id,
-        'razorpay_payment_id': transaction.razorpay_payment_id,
-        'amount': str(transaction.amount),
-        'currency': transaction.currency,
-        'description': transaction.description,
-        'status': transaction.status,
-        'created_at': transaction.created_at.isoformat(),
-        'updated_at': transaction.updated_at.isoformat()
-    }
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_api(request):
+    try:
+        mode = payment_mode()
+    except PaymentError:
+        mode = 'misconfigured'
+    return Response({'status': 'ok', 'payment_mode': mode})
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_order_api(request):
-    amount_str = request.data.get('amount')
-    description = request.data.get('description', 'Payment')
-    
-    if not amount_str:
-        return Response({'amount': ['This field is required.']}, status=400)
-    
-    try:
-        amount = Decimal(str(amount_str))
-        if amount < 1:
-            return Response({'amount': ['Amount must be at least 1.']}, status=400)
-    except (InvalidOperation, ValueError):
-        return Response({'amount': ['Enter a valid number.']}, status=400)
-    
-    try:
-        if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
-            return Response({'error': 'Razorpay keys not configured.'}, status=500)
-        
-        amount_in_paise = int(amount * 100)
-              
-        transaction = Transaction.objects.create(
-            user=request.user,
-            order_id=f"ORD_{request.user.id}_{Transaction.objects.count() + 1}",
-            amount=amount,
-            currency='INR',
-            description=description,
-            status='PENDING'
+    def action():
+        transaction = create_order(
+            request.user,
+            request.data.get('amount'),
+            request.data.get('description'),
+            get_client_ip(request),
         )
-        
-        client = get_razorpay_client()
-        razorpay_order = client.order.create({
-            'amount': amount_in_paise,
-            'currency': 'INR',
-            'receipt': transaction.order_id,
-            'payment_capture': 1
-        })
-        
-        transaction.razorpay_order_id = razorpay_order['id']
-        transaction.receipt = razorpay_order['receipt']
-        transaction.save()
-        
-        PaymentLog.objects.create(
-            transaction=transaction,
-            event_type='ORDER_CREATED',
-            payload=razorpay_order,
-            message=f"Order created: {razorpay_order['id']}",
-            ip_address=get_client_ip(request)
-        )
-        
-        user_name = request.user.get_full_name() or request.user.username or request.user.email.split('@')[0]
-        
-        return Response({
-            'transaction': serialize_transaction(transaction),
-            'razorpay_key_id': settings.RAZORPAY_KEY_ID,
-            'razorpay_order_id': razorpay_order['id'],
-            'amount': str(amount),
-            'amount_in_paise': amount_in_paise,
-            'currency': 'INR',
-            'description': description,
-            'user_name': user_name,
-            'user_email': request.user.email,
-        })
-        
-    except razorpay.errors.BadRequestError:
-        return Response({'error': 'Authentication failed. Check Razorpay credentials.'}, status=500)
-    except Exception as e:
-        return Response({'error': f'Error creating order: {str(e)}'}, status=500)
+        return Response(order_payload(transaction, request.user))
+
+    return guarded(action)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def verify_payment_api(request):
-    try:
-        razorpay_order_id = request.data.get('razorpay_order_id')
-        razorpay_payment_id = request.data.get('razorpay_payment_id')
-        razorpay_signature = request.data.get('razorpay_signature')
-        
-        transaction = Transaction.objects.get(razorpay_order_id=razorpay_order_id, user=request.user)
-        
-        generated_signature = hmac.new(
-            settings.RAZORPAY_KEY_SECRET.encode(),
-            f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
-            hashlib.sha256
-        ).hexdigest()
-        
-        if generated_signature == razorpay_signature:
-            transaction.razorpay_payment_id = razorpay_payment_id
-            transaction.razorpay_signature = razorpay_signature
-            transaction.status = 'SUCCESS'
-            transaction.save()
-            
-            PaymentLog.objects.create(
-                transaction=transaction,
-                event_type='PAYMENT_SUCCESS',
-                payload={
-                    'order_id': razorpay_order_id,
-                    'payment_id': razorpay_payment_id,
-                    'signature': razorpay_signature
-                },
-                message='Payment verified successfully',
-                ip_address=get_client_ip(request)
-            )
-            
-            return Response({
-                'message': 'Payment successful.',
-                'transaction': serialize_transaction(transaction)
-            })
-        else:
-            transaction.status = 'FAILED'
-            transaction.save()
-            
-            PaymentLog.objects.create(
-                transaction=transaction,
-                event_type='SIGNATURE_FAILED',
-                message='Signature verification failed',
-                ip_address=get_client_ip(request)
-            )
-            
-            return Response({'error': 'Payment verification failed.'}, status=400)
-            
-    except Transaction.DoesNotExist:
-        return Response({'error': 'Transaction not found.'}, status=404)
-    except Exception as e:
-        return Response({'error': f'Error verifying payment: {str(e)}'}, status=500)
+    def action():
+        transaction = verify_payment(
+            request.user,
+            request.data.get('razorpay_order_id'),
+            request.data.get('razorpay_payment_id'),
+            request.data.get('razorpay_signature'),
+            get_client_ip(request),
+        )
+        return Response({
+            'message': 'Payment successful.',
+            'transaction': serialize_transaction(transaction),
+        })
+
+    return guarded(action)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def payment_failure_api(request):
-    try:
-        transaction_id = request.data.get('transaction_id')
-        transaction = Transaction.objects.get(id=transaction_id, user=request.user)
-        
-        if transaction.status == 'PENDING':
-            transaction.status = 'FAILED'
-            transaction.save()
-            
-            PaymentLog.objects.create(
-                transaction=transaction,
-                event_type='PAYMENT_FAILED',
-                message='Payment failed or cancelled',
-                ip_address=get_client_ip(request)
-            )
-        
+    def action():
+        transaction = mark_failed(
+            request.user,
+            request.data.get('transaction_id'),
+            request.data.get('reason') or 'Payment failed or was cancelled.',
+            get_client_ip(request),
+        )
         return Response({
             'message': 'Payment marked as failed.',
-            'transaction': serialize_transaction(transaction)
+            'transaction': serialize_transaction(transaction),
         })
-    except Transaction.DoesNotExist:
-        return Response({'error': 'Transaction not found.'}, status=404)
+
+    return guarded(action)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sandbox_complete_api(request):
+    def action():
+        transaction = complete_sandbox(
+            request.user,
+            request.data.get('transaction_id'),
+            request.data.get('outcome'),
+            get_client_ip(request),
+        )
+        return Response({
+            'message': 'Sandbox payment recorded.',
+            'transaction': serialize_transaction(transaction),
+        })
+
+    return guarded(action)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def transaction_history_api(request):
-    transactions = Transaction.objects.filter(user=request.user).order_by('-created_at')
-    return Response([serialize_transaction(t) for t in transactions])
+    return Response(paginate_transactions(
+        request.user,
+        status=request.query_params.get('status', ''),
+        query=request.query_params.get('q', ''),
+        page=request.query_params.get('page', 1),
+    ))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def transaction_summary_api(request):
+    return Response(summary_for(request.user))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def transaction_detail_api(request, transaction_id):
+    def action():
+        transaction = owned_transaction(request.user, id=transaction_id)
+        logs = PaymentLog.objects.filter(transaction=transaction).order_by('created_at', 'id')
+        payload = serialize_transaction(transaction)
+        payload['activity'] = [serialize_activity(log) for log in logs]
+        return Response(payload)
+
+    return guarded(action)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def refund_api(request, transaction_id):
+    def action():
+        transaction = refund_transaction(request.user, transaction_id, get_client_ip(request))
+        return Response({
+            'message': 'Payment refunded.',
+            'transaction': serialize_transaction(transaction),
+        })
+
+    return guarded(action)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_transactions_api(request):
+    rows = filtered_transactions(
+        request.user,
+        status=request.query_params.get('status', ''),
+        query=request.query_params.get('q', ''),
+    )[:1000]
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="paygate-transactions.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Order ID', 'Description', 'Amount', 'Currency', 'Status', 'Provider', 'Payment ID', 'Created'])
+    for item in rows:
+        writer.writerow([
+            item.order_id,
+            item.description,
+            f'{item.amount:.2f}',
+            item.currency,
+            item.status,
+            item.provider,
+            item.razorpay_payment_id,
+            item.created_at.isoformat(),
+        ])
+    return response
+
+
+@csrf_exempt
+def webhook_api(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed.'}, status=405)
+
+    signature = request.headers.get('X-Razorpay-Signature', '')
+    if not safe_compare(sign_webhook(request.body), signature):
+        return JsonResponse({'error': 'Invalid webhook signature.'}, status=400)
+
     try:
-        transaction = Transaction.objects.get(id=transaction_id, user=request.user)
-        return Response(serialize_transaction(transaction))
-    except Transaction.DoesNotExist:
-        return Response({'error': 'Transaction not found.'}, status=404)
+        payload = json.loads(request.body.decode() or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    return JsonResponse({'status': apply_webhook(payload)})

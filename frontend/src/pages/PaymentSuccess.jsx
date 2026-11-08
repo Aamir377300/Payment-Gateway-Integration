@@ -1,70 +1,43 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/axios';
+import StatusBadge from '../components/StatusBadge';
+import { formatDate, formatINR } from '../utils/format';
 
 const PaymentSuccess = () => {
   const { transactionId } = useParams();
   const [transaction, setTransaction] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchTransaction = async () => {
-      try {
-        const response = await api.get(`/payments/transactions/${transactionId}/`);
-        setTransaction(response.data);
-      } catch (error) {
-        // Handle error silently
-      }
-    };
-    fetchTransaction();
+    api.get(`/payments/transactions/${transactionId}/`)
+      .then((response) => setTransaction(response.data))
+      .catch(() => setError('This receipt could not be loaded.'));
   }, [transactionId]);
 
-  if (!transaction) return <div>Loading...</div>;
-
   return (
-    <section className="auth-section">
-      <div className="container" style={{ maxWidth: '600px', textAlign: 'center' }}>
-        <div className="auth-card">
-          <div style={{ fontSize: '80px', marginBottom: '20px' }}>✅</div>
-          <h1>Payment Successful!</h1>
-          <p>Your payment has been processed successfully.</p>
-
-          <div style={{ margin: '30px 0', background: '#f8f9fa', padding: '20px', borderRadius: '8px', textAlign: 'left' }}>
-            <h3 style={{ marginBottom: '15px' }}>Transaction Details</h3>
-            <table style={{ width: '100%' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Order ID:</td>
-                  <td style={{ padding: '8px' }}><strong>{transaction.order_id}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Amount:</td>
-                  <td style={{ padding: '8px' }}><strong>₹{transaction.amount}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Payment ID:</td>
-                  <td style={{ padding: '8px' }}><strong>{transaction.razorpay_payment_id}</strong></td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Status:</td>
-                  <td style={{ padding: '8px' }}>
-                    <span style={{ background: '#28a745', color: 'white', padding: '5px 10px', borderRadius: '4px', fontSize: '12px' }}>
-                      {transaction.status}
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px', color: '#666' }}>Date:</td>
-                  <td style={{ padding: '8px' }}>{new Date(transaction.created_at).toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
+    <section className="page">
+      <div className="container narrow">
+        <p className="eyebrow">Payment recorded</p>
+        <h1>Paid</h1>
+        {error && <div className="alert alert-error">{error}</div>}
+        {!transaction && !error && <p className="empty">Loading receipt…</p>}
+        {transaction && (
+          <div className="panel">
+            <StatusBadge status={transaction.status} />
+            <p className="amount">{formatINR(transaction.amount)}</p>
+            <p>{transaction.description}</p>
+            <dl className="meta">
+              <div><dt>Order</dt><dd>{transaction.order_id}</dd></div>
+              <div><dt>Payment</dt><dd>{transaction.razorpay_payment_id || '—'}</dd></div>
+              <div><dt>When</dt><dd>{formatDate(transaction.created_at)}</dd></div>
+            </dl>
+            <div className="button-row">
+              <Link to={`/transactions/${transaction.id}`} className="btn btn-primary">Open receipt</Link>
+              <Link to="/transactions" className="btn btn-outline">History</Link>
+            </div>
           </div>
-
-          <div style={{ marginTop: '30px' }}>
-            <Link to="/transactions" className="btn btn-primary">View All Transactions</Link>
-            <Link to="/dashboard" className="btn btn-outline" style={{ marginLeft: '10px' }}>Back to Dashboard</Link>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );
